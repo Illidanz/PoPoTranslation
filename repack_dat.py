@@ -40,8 +40,9 @@ def run():
                         if allempty:
                             continue
                         # Look for strings
-                        fi.seek(stringrange[0])
-                        while fi.tell() < stringrange[1]:
+                        extendedstrings = {}
+                        fi.seek(stringrange.start)
+                        while fi.tell() < stringrange.end:
                             pos = fi.tell()
                             check = game.detectEncodedString(fi)
                             if check != "":
@@ -52,10 +53,36 @@ def run():
                                     # Only wordwrap if there are no sprintf codes
                                     if "%" not in newsjis:
                                         newsjis = common.wordwrap(newsjis, {}, 290, game.detectTextCode, 9)
-                                    game.writeEncodedString(fo, newsjis, endpos - pos + 1)
-                                    fo.seek(-1, 1)
-                                    if fo.readByte() != 0:
-                                        fo.writeZero(1)
+                                    common.logDebug("Writing string at", fo.tell())
+                                    length, x = game.writeEncodedString(fo, newsjis, endpos - pos)
+                                    if length < 0:
+                                        # String doesn't fit, check if we've already moved it
+                                        if newsjis in extendedstrings:
+                                            common.logDebug("String doesn't fit", x, "redirected to", extendedstrings[newsjis])
+                                            fo.seek(-3, 1)
+                                            fo.writeByte(0x1f)
+                                            fo.writeUShort(extendedstrings[newsjis] - fo.tell() + 1)
+                                        else:
+                                            # Redirect to free space
+                                            # Go back 3 characters and write the string again
+                                            common.logDebug("String doesn't fit", x, "redirecting to", stringrange.free)
+                                            x -= 3
+                                            stringfit = newsjis[:x]
+                                            stringrest = newsjis[x:]
+                                            fo.seek(pos)
+                                            game.writeEncodedString(fo, stringfit)
+                                            fo.seek(-1, 1)
+                                            fo.writeByte(0x1f)
+                                            fo.writeUShort(stringrange.free - fo.tell() + 1)
+                                            fo.seek(stringrange.free)
+                                            extendedstrings[newsjis] = fo.tell()
+                                            length, x = game.writeEncodedString(fo, stringrest, stringrange.end - stringrange.free)
+                                            if length < 0:
+                                                fo.seek(-1, 1)
+                                                fo.writeByte(0x0)
+                                                common.logError("No room for string", newsjis, fo.tell())
+                                            else:
+                                                stringrange.free += length + 1
                                 pos = fi.tell() - 1
                             fi.seek(pos + 1)
     common.logMessage("Done! Translation is at {0:.2f}%".format((100 * transtot) / chartot))

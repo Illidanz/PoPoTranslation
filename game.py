@@ -44,7 +44,7 @@ def writeEncodedString(f, s, maxlen=0, encoding="shift_jis", singlebreak=False):
         c = s[x]
         if c == "U" and x < len(s) - 4 and s[x:x+4] == "UNK(":
             if maxlen > 0 and i+2 > maxlen:
-                return -1
+                return -1, x
             code = s[x+4] + s[x+5]
             f.write(bytes.fromhex(code))
             code = s[x+6] + s[x+7]
@@ -53,26 +53,27 @@ def writeEncodedString(f, s, maxlen=0, encoding="shift_jis", singlebreak=False):
             i += 2
         elif c == "|":
             if maxlen > 0 and i+1 > maxlen:
-                return -1
+                return -1, x
             f.writeByte(0x0A)
             i += 1
         elif ord(c) < 128:
             if maxlen > 0 and i+1 > maxlen:
-                return -1
+                return -1, x
             f.writeByte(ord(c))
             i += 1
         else:
             if maxlen > 0 and i+2 > maxlen:
-                return -1
+                return -1, x
             f.write(c.encode(encoding))
             i += 2
         x += 1
     f.writeByte(0x00)
-    return i
+    return i, x
 
 
 def writeEXEString(f, s, maxlen=0, encoding="shift_jis"):
-    return writeEncodedString(f, s, maxlen, encoding, singlebreak=True)
+    length, x = writeEncodedString(f, s, maxlen, encoding, singlebreak=True)
+    return length
 
 
 def detectTextCode(s, i=0):
@@ -116,6 +117,18 @@ def readTIM(f, forcesize):
     return False
 
 
+class DATRange:
+    start = 0
+    end = 0
+    type = 0
+    free = 0
+
+    def __init__(self, start, end, type):
+        self.start = start
+        self.end = end
+        self.type = type
+
+
 def getDatRanges(file, extension):
     size = os.path.getsize(file)
     stringranges = []
@@ -130,9 +143,10 @@ def getDatRanges(file, extension):
                     f.seek(0x800, 1)
                     if f.tell() == size or isSection(f) != 0:
                         if section == 1:
-                            imgranges.append((pos + 8, f.tell(), section))
+                            # Image
+                            imgranges.append(DATRange(pos + 8, f.tell(), section))
                         elif section == 2 or (section == 3 and extension == ".VIN") or section == 4:
-                            otherranges.append((pos, f.tell(), section))
+                            # Image
                             sectionpos = f.tell()
                             f.seek(pos + 4 + 4 * section)
                             i = 0
@@ -146,15 +160,25 @@ def getDatRanges(file, extension):
                                 if tim is None:
                                     break
                                 elif tim:
-                                    imgranges.append((timpos, f.tell(), section))
+                                    imgranges.append(DATRange(timpos, f.tell(), section))
                                 else:
-                                    otherranges.append((timpos, f.tell(), section))
+                                    otherranges.append(DATRange(timpos, f.tell(), section))
                                 i += 1
                             f.seek(sectionpos)
                         elif section % 2 == 1:
-                            stringranges.append((pos, f.tell(), section))
+                            # Script
+                            stringrange = DATRange(pos, f.tell(), section)
+                            # Check for free space at the end of the section
+                            while f.tell() > pos:
+                                f.seek(-1, 1)
+                                if f.peek(1)[0] != 0x0:
+                                    break
+                            stringrange.free = f.tell() + 2
+                            f.seek(stringrange.end)
+                            stringranges.append(stringrange)
                         else:
-                            otherranges.append((pos, f.tell(), section))
+                            # Unknown, probably map data?
+                            otherranges.append(DATRange(pos, f.tell(), section))
                         break
             else:
                 f.seek(0x800, 1)

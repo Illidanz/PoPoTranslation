@@ -31,6 +31,9 @@
   ;Copy both bytes for sjis characters
   li t5,0x79
   bgt a0,t5,ASCII_SJIS
+  ;0x1f: the string was redirected to another location
+  li t5,0x1f
+  beq a0,t5,ASCII_REDIRECT
   ;If < 0x21, just copy the byte
   li t5,0x21
   blt a0,t5,ASCII_COPY
@@ -63,11 +66,16 @@
   addiu a1,a1,0x2
   addiu s0,s0,0x2
   jr ra :: nop
-  ;Just copy some characters
+  ;Just copy the character
   ASCII_COPY:
   sb a0,0x0(s0)
   addiu a1,a1,0x1
   addiu s0,s0,0x1
+  jr ra :: nop
+  ;Add the new address to the source and return
+  ASCII_REDIRECT:
+  lhu t5,0x1(a1) :: nop
+  addu a1,a1,t5
   jr ra :: nop
 
   ASCII:
