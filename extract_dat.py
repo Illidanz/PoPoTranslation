@@ -38,7 +38,7 @@ def run():
                         common.logDebug("String range:", vars(stringrange))
                         scriptfile = file.replace(extension, "_" + str(i).zfill(3))
                         extractFile(f, stringrange, outscript + scriptfile + ".bin")
-                        strings, positions = psx.extractBinaryStrings(infolder + file, [stringrange], game.detectEncodedString)
+                        strings, positions = psx.extractBinaryStrings(infolder + file, [(stringrange.start, stringrange.end)], game.detectEncodedString)
                         if len(strings) > 0:
                             common.logDebug("Processing script file", scriptfile)
                             out.write("!FILE:" + scriptfile + "\n")
