@@ -3,7 +3,7 @@ import click
 import game
 from hacktools import common, psx
 
-version = "0.5.0"
+version = "0.6.0"
 cuein = "data/PoPoLoCrois Monogatari (Japan) (v1.1).cue"
 cueout = "data/PoPoLoCrois Monogatari (English).cue"
 binin = "data/PoPoLoCrois Monogatari (Japan) (v1.1).bin"
@@ -42,7 +42,8 @@ def extract(bin, exe, dat, img, mov):
 @click.option("--exe", is_flag=True, default=False)
 @click.option("--dat", is_flag=True, default=False)
 @click.option("--mov", is_flag=True, default=False)
-def repack(no_bin, exe, dat, mov):
+@click.option("--deb", is_flag=True, default=False)
+def repack(no_bin, exe, dat, mov, deb):
     all = not exe and not dat and not mov
     if all or dat:
         import repack_dat
@@ -50,9 +51,10 @@ def repack(no_bin, exe, dat, mov):
     if all or mov:
         import repack_mov
         repack_mov.run()
-    if all or exe:
+    if all or exe or deb:
         psx.repackEXE(game.binranges, game.detectEXEString, game.writeEXEString, "shift_jis", "#", exein, exeout)
-        common.armipsPatch(common.bundledFile("bin_patch.asm"))
+        labels = {"DEBUG": 1} if deb else {}
+        common.armipsPatch(common.bundledFile("bin_patch.asm"), labels=labels)
     if not no_bin:
         psx.repackBIN(binin, binout, cueout, "data/patch.xdelta")
 

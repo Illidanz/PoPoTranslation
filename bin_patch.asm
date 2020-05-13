@@ -125,4 +125,10 @@
 .org 0x80077958
   nop
 
+;Enable debug mode
+.ifdef DEBUG
+.org 0x80056354
+  sh t5,0x4054(at)
+.endif
+
 .close
