@@ -1,32 +1,46 @@
 import codecs
 import os
 import game
-from hacktools import common
+from hacktools import common, psx
 
 
 def run():
     infolder = "data/extract/"
     outfolder = "data/repack/"
+    workfolder = "data/work_IMG/"
     infile = "data/dat_input.txt"
     if not os.path.isfile(infile):
         common.logError("Input file", infile, "not found")
         return
-    chartot = transtot = 0
+    chartot = transtot = 1
 
     common.logMessage("Repacking DAT from", infile, "...")
     with codecs.open(infile, "r", "utf-8") as dat:
-        files = common.getFiles(infolder, ".DAT")
+        files = common.getFiles(infolder, [".DAT", ".VIN"])
         for file in common.showProgress(files):
+            extension = os.path.splitext(file)[1]
             common.copyFile(infolder + file, outfolder + file)
             common.logDebug("Processing", file, "...")
-            stringranges, imgranges, mapranges = game.getDatRanges(infolder + file, ".DAT")
+            stringranges, imgranges, otherranges = game.getDatRanges(infolder + file, extension)
             with common.Stream(infolder + file, "r+b") as fi:
                 with common.Stream(outfolder + file, "r+b") as fo:
+                    # Loop all images
+                    for i in range(len(imgranges)):
+                        imgrange = imgranges[i]
+                        imgfile = workfolder + file.replace(extension, "_" + str(i).zfill(3)) + ".png"
+                        # Skip if not edited
+                        if not os.path.isfile(imgfile):
+                            continue
+                        common.logDebug("Writing image", imgfile)
+                        fi.seek(imgrange.start)
+                        fo.seek(imgrange.start)
+                        tim = psx.readTIM(fi)
+                        psx.writeTIM(fo, tim, imgfile, 0 if imgfile.endswith("ETC_007.png") else -1)
                     # Loop all script files
                     for i in range(len(stringranges)):
                         # Get section data
                         stringrange = stringranges[i]
-                        sectionname = file.replace(".DAT", "_" + str(i).zfill(3))
+                        sectionname = file.replace(extension, "_" + str(i).zfill(3))
                         section = common.getSection(dat, sectionname)
                         chartot, transtot = common.getSectionPercentage(section, chartot, transtot)
                         # Skip if empty

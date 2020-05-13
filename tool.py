@@ -3,7 +3,7 @@ import click
 import game
 from hacktools import common, psx
 
-version = "0.6.0"
+version = "0.7.0"
 cuein = "data/PoPoLoCrois Monogatari (Japan) (v1.1).cue"
 cueout = "data/PoPoLoCrois Monogatari (English).cue"
 binin = "data/PoPoLoCrois Monogatari (Japan) (v1.1).bin"
@@ -31,7 +31,7 @@ def extract(bin, exe, dat, img, mov):
         import extract_dat
         extract_dat.run()
     if all or img:
-        psx.extractTIM("data/extract_IMG/", "data/out_IMG/")
+        psx.extractTIM("data/extract_IMG/", "data/out_IMG/", readfunc=game.readImage)
     if all or mov:
         import extract_mov
         extract_mov.run()

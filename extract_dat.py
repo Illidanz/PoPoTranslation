@@ -5,10 +5,10 @@ from hacktools import common, psx
 
 
 def extractFile(f, range, filename):
-    f.seek(range[0])
+    f.seek(range.start)
     common.makeFolders(os.path.dirname(filename))
     with common.Stream(filename, "wb") as fout:
-        fout.write(f.read(range[1] - range[0]))
+        fout.write(f.read(range.end - range.start))
 
 
 def run():

@@ -102,6 +102,15 @@ def isSection(f):
     return 0
 
 
+def readImage(file):
+    with common.Stream(file, "rb") as f:
+        tim = psx.readTIM(f)
+    forcepal = -1
+    if file.endswith("ETC_007.tim"):
+        forcepal = 0
+    return tim, forcepal
+
+
 def readTIM(f, forcesize):
     pos = f.tell()
     tim = psx.readTIM(f, forcesize)
@@ -173,7 +182,8 @@ def getDatRanges(file, extension):
                                 f.seek(-1, 1)
                                 if f.peek(1)[0] != 0x0:
                                     break
-                            stringrange.free = f.tell() + 2
+                            spacing = f.tell() % 16 if f.tell() % 16 > 0 else 16
+                            stringrange.free = f.tell() + spacing
                             f.seek(stringrange.end)
                             stringranges.append(stringrange)
                         else:
