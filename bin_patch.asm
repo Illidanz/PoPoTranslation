@@ -4,8 +4,12 @@
 .org 0x80016b54
   ;ASCII to SJIS lookup table
   SJIS_LOOKUP:
-  .sjisn "　！゛＃＄％＆｀（）＊＋，－．／０１２３４５６７８９：；〈＝〉？＠"
-  .sjisn "ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿｀"
+  .sjisn "　！”＃＄％＆"
+  ;Fix ' since it doesn't get encoded correctly
+  ;Also change + to * and _ to ;
+  db 0x81 :: db 0x66
+  .sjisn "（）＋＋，－．／０１２３４５６７８９：＿〈＝〉？＠"
+  .sjisn "ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿　"
   .sjisn "ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｝｜～"
   .align
 
@@ -74,7 +78,11 @@
   jr ra :: nop
   ;Add the new address to the source and return
   ASCII_REDIRECT:
-  lhu t5,0x1(a1) :: nop
+  lbu a0,0x1(a1)
+  lbu t5,0x2(a1)
+  nop
+  sll t5,t5,0x8
+  or t5,t5,a0
   addu a1,a1,t5
   jr ra :: nop
 
