@@ -106,6 +106,21 @@
   move v1,a1
   j ASCII_SPRINTF_RETURN :: nop
 
+  CONTROLLER:
+  ;Swap bits 5 and 6 in a0 (controller buffer read from memory)
+  srl t0,a0,0x5
+  srl t1,a0,0x6
+  xor t0,t0,t1
+  andi t0,t0,0x1
+  sll t1,t0,0x5
+  sll t0,t0,0x6
+  or t0,t0,t1
+  xor a0,a0,t0
+  ;Original code
+  sll v1,v1,0x8
+  nor v1,v1,a0
+  j CONTROLLER_RETURN :: nop
+
 ;Reset t9 which we use to add a $c if we encounter ASCII
 .org 0x800777cc
   move t9,zero
@@ -124,6 +139,11 @@
 ;Don't increase s0 here
 .org 0x80077958
   nop
+
+;Swap Circle and Cross
+.org 0x80057010
+  j CONTROLLER :: nop
+  CONTROLLER_RETURN:
 
 ;Enable debug mode
 .ifdef DEBUG
