@@ -1,6 +1,7 @@
 import codecs
 import os
 import ass
+import game
 from PIL import Image
 from hacktools import common
 
@@ -22,6 +23,7 @@ def run():
 
     for file in common.showProgress(files):
         common.logDebug("Processing", file)
+        glyphs = game.getFontGlyphs("data/vwf.bin")
         # Copy the file and setup folders
         extractmov = extractfolder + file.replace(".MOV", "") + "/"
         repackmov = repackfolder + file.replace(".MOV", "") + "/"
@@ -51,7 +53,10 @@ def run():
                     if i >= 0:
                         glyph = fontimg.crop((i * 8, 0, i * 8 + 8, 15))
                         txt.paste(glyph, (x, 0), glyph)
-                    x += 8
+                    if char in glyphs:
+                        x += glyphs[char].length
+                    else:
+                        x += 8
                 txt = txt.crop(txt.getbbox())
                 txtpos = ((320 - txt.width) // 2, 224 - 15 - 5)
                 # Edit all frames where the line appears

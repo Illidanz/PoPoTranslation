@@ -126,6 +126,16 @@ def readTIM(f, forcesize):
     return False
 
 
+def getFontGlyphs(file):
+    glyphs = {}
+    fontglyphs = "!\"%&'()**,-./0123456789:;<=>?ABC EFGHIJKLMNOPQRSTUVWXYZ[];abcdefghijklmnopqrstuvwxyz_______D~___"
+    with common.Stream(file, "rb") as f:
+        for i in range(len(fontglyphs)):
+            width = f.readByte()
+            glyphs[fontglyphs[i]] = common.FontGlyph(0, width, width)
+    return glyphs
+
+
 class DATRange:
     start = 0
     end = 0

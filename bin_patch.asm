@@ -2,15 +2,20 @@
 
 .open "data/repack/SCPS_100.23",0x8000F800
 .org 0x80016b54
+.area 0x34C
   ;ASCII to SJIS lookup table
   SJIS_LOOKUP:
   .sjisn "　！”＃＄％＆"
   ;Fix ' since it doesn't get encoded correctly
-  ;Also change + to * and _ to ;
   db 0x81 :: db 0x66
+  ;Also change + to * and _ to ;
   .sjisn "（）＋＋，－．／０１２３４５６７８９：＿〈＝〉？＠"
   .sjisn "ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿　"
   .sjisn "ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｝｜～"
+
+  ;VWF lookup table
+  VWF_LOOKUP:
+  .import "data/vwf.bin"
   .align
 
   ;Check t9 to figure out if we need to add a $c
@@ -53,34 +58,55 @@
   addiu a0,a0,-0x20
   sll a0,a0,0x1
   addu a0,a0,t5
-  lbu t5,0x0(a0) :: nop
+  lbu t5,0x0(a0)
+  lbu a0,0x1(a0)
   sb t5,0x0(s0)
-  lbu t5,0x1(a0) :: nop
-  sb t5,0x1(s0)
+  sb a0,0x1(s0)
   addiu s0,s0,0x2
   addiu a1,a1,0x1
-  jr ra :: nop
-  ;Copy 2 bytes for SJIS and control codes, and reset t9 for SJIS
+  jr ra
+  ;Copy 2 bytes for SJIS and reset t9 for SJIS
   ASCII_SJIS:
   CheckC 0x0
-  ASCII_CCODES:
   lbu t5,0x1(a1)
   sb a0,0x0(s0)
   sb t5,0x1(s0)
   addiu a1,a1,0x2
   addiu s0,s0,0x2
   jr ra :: nop
+  ;Copy 2 bytes for control codes
+  ASCII_CCODES:
+  lbu t5,0x1(a1)
+  sb a0,0x0(s0)
+  sb t5,0x1(s0)
+  addiu a1,a1,0x2
+  addiu s0,s0,0x2
+  ;Check for $g code
+  li a0,0x67
+  bne a0,t5,ASCII_CCODES_DONE
+  ;For $g codes, keep copying until it finds numbers
+  ASCII_CCODES_G:
+  lbu t5,0x0(a1)
+  li a0,0x3a
+  addiu t5,t5,-0x2f
+  bge t5,a0,ASCII_CCODES_DONE
+  lbu t5,0x0(a1)
+  addiu a1,a1,0x1
+  sb t5,0x0(s0)
+  addiu s0,s0,0x1
+  j ASCII_CCODES_G :: nop
+  ASCII_CCODES_DONE:
+  jr ra :: nop
   ;Just copy the character
   ASCII_COPY:
   sb a0,0x0(s0)
   addiu a1,a1,0x1
   addiu s0,s0,0x1
-  jr ra :: nop
+  jr ra
   ;Add the new address to the source and return
   ASCII_REDIRECT:
-  lbu a0,0x1(a1)
   lbu t5,0x2(a1)
-  nop
+  lbu a0,0x1(a1)
   sll t5,t5,0x8
   or t5,t5,a0
   addu a1,a1,t5
@@ -93,8 +119,8 @@
   move a0,v1
   move a1,s1
   jal ASCII_FUNC :: nop
+  j ASCII_RETURN
   move s1,a1
-  j ASCII_RETURN :: nop
   ASCII_PERC:
   j ASCII_RETURN_PERC :: nop
 
@@ -105,6 +131,35 @@
   jal ASCII_FUNC :: nop
   move v1,a1
   j ASCII_SPRINTF_RETURN :: nop
+
+  ;s1 = character
+  ;r20 = spacing
+  VWF:
+  ;Skip japanese characters
+  li t1,0x60
+  li t2,VWF_LOOKUP
+  bge s1,t1,VWF_JAP
+  ;Get the VWF width from the lookup table and return
+  addu t2,t2,s1
+  lbu t1,0x0(t2)
+  j VWF_RETURN
+  addu s4,s4,t1
+  ;Default to 0x8 for japanese characters
+  VWF_JAP:
+  addiu s4,s4,0x8
+  j VWF_RETURN :: nop
+
+  ;Check if there are 2 consecutive 0s and move to the next line
+  VWF_FIX:
+  lbu s1,0x38(v0)
+  lbu v0,0x39(v0) :: nop
+  addu v0,s1,v0
+  bgt v0,zero,VWF_FIX_NOTZERO :: nop
+  j VWF_FIX_ENDLINE
+  li v0,0x20
+  VWF_FIX_NOTZERO:
+  j VWF_FIX_RETURN
+  li v0,0x20
 
   CONTROLLER:
   ;Swap bits 5 and 6 in a0 (controller buffer read from memory)
@@ -120,6 +175,7 @@
   sll v1,v1,0x8
   nor v1,v1,a0
   j CONTROLLER_RETURN :: nop
+.endarea
 
 ;Reset t9 which we use to add a $c if we encounter ASCII
 .org 0x800777cc
@@ -139,6 +195,22 @@
 ;Don't increase s0 here
 .org 0x80077958
   nop
+
+;Replace the fixed with for half characters
+.org 0x8007bae4
+  j VWF
+  addiu s8,s8,0x1
+  VWF_RETURN:
+;Fix overdraw that isn't normally visible
+.org 0x8007b630
+  j VWF_FIX
+  nop
+  VWF_FIX_RETURN:
+.org 0x8007bb14
+  VWF_FIX_ENDLINE:
+;Increase the maximum line length
+.org 0x80077eac
+  li v1,0x14
 
 ;Swap Circle and Cross
 .org 0x80057010

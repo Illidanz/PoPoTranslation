@@ -17,6 +17,7 @@ def run():
     common.logMessage("Repacking DAT from", infile, "...")
     with codecs.open(infile, "r", "utf-8") as dat:
         files = common.getFiles(infolder, [".DAT", ".VIN"])
+        glyphs = game.getFontGlyphs("data/vwf.bin")
         for file in common.showProgress(files):
             extension = os.path.splitext(file)[1]
             common.copyFile(infolder + file, outfolder + file)
@@ -66,7 +67,7 @@ def run():
                                     newsjis = section[check][0]
                                     # Only wordwrap if there are no sprintf codes
                                     if "%" not in newsjis:
-                                        newsjis = common.wordwrap(newsjis, {}, 290, game.detectTextCode, 9)
+                                        newsjis = common.wordwrap(newsjis, glyphs, 276, game.detectTextCode, 8)
                                     common.logDebug("Writing string at", fo.tell())
                                     length, x = game.writeEncodedString(fo, newsjis, endpos - pos)
                                     if length < 0:
