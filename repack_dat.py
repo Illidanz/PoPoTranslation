@@ -55,11 +55,12 @@ def run():
                         if allempty:
                             continue
                         # Look for strings
+                        detectfunc = game.detectEncodedString if stringrange.type != 1 else game.detectVINString
                         extendedstrings = {}
                         fi.seek(stringrange.start)
                         while fi.tell() < stringrange.end:
                             pos = fi.tell()
-                            check = game.detectEncodedString(fi)
+                            check = detectfunc(fi)
                             if check != "":
                                 if check in section and section[check][0] != "":
                                     fo.seek(pos)

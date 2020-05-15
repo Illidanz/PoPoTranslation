@@ -13,6 +13,8 @@ def detectEncodedString(f, encoding="shift_jis", startascii=[0x24, 0x25], single
             break
         elif b1 == 0x0A and singlebreak:
             ret += "|"
+        elif b1 == 0x09 and 0x09 in startascii:
+            ret += ">"
         elif b1 >= 0x20 and b1 <= 0x7e and (len(ret) > 0 or b1 in startascii):
             ret += chr(b1)
         else:
@@ -30,6 +32,10 @@ def detectEncodedString(f, encoding="shift_jis", startascii=[0x24, 0x25], single
     if len(ret) == 1:
         return ""
     return ret
+
+
+def detectVINString(f, encoding="shift_jis"):
+    return detectEncodedString(f, encoding, [0x24, 0x25, 0x09])
 
 
 def detectEXEString(f, encoding="shift_jis"):
@@ -51,10 +57,10 @@ def writeEncodedString(f, s, maxlen=0, encoding="shift_jis", singlebreak=False):
             f.write(bytes.fromhex(code))
             x += 8
             i += 2
-        elif c == "|":
+        elif c == "|" or c == ">":
             if maxlen > 0 and i+1 > maxlen:
                 return -1, x
-            f.writeByte(0x0A)
+            f.writeByte(0x0A if c == "|" else 0x09)
             i += 1
         elif ord(c) < 128:
             if maxlen > 0 and i+1 > maxlen:
@@ -136,6 +142,16 @@ def getFontGlyphs(file):
     return glyphs
 
 
+def getScriptFree(f, pos):
+    # Check for free space at the end of the section
+    while f.tell() > pos:
+        f.seek(-1, 1)
+        if f.peek(1)[0] != 0x0:
+            break
+    padding = f.tell() % 16 if f.tell() % 16 > 0 else 16
+    return f.tell() + padding
+
+
 class DATRange:
     start = 0
     end = 0
@@ -163,7 +179,15 @@ def getDatRanges(file, extension):
                     if f.tell() == size or isSection(f) != 0:
                         if section == 1:
                             # Image
-                            imgranges.append(DATRange(pos + 8, f.tell(), section))
+                            imgrange = DATRange(pos + 8, f.tell(), section)
+                            # Fix image with wrong size
+                            if file.endswith("ETC.VIN") and pos == 1732608:
+                                imgrange.end -= 0x3600
+                                stringrange = DATRange(imgrange.end, imgrange.end + 0x3600, section)
+                                stringrange.free = getScriptFree(f, pos)
+                                f.seek(stringrange.end)
+                                stringranges.append(stringrange)
+                            imgranges.append(imgrange)
                         elif section == 2 or (section == 3 and extension == ".VIN") or section == 4:
                             # Image
                             sectionpos = f.tell()
@@ -172,7 +196,7 @@ def getDatRanges(file, extension):
                             while f.tell() < size - 4:
                                 timpos = f.tell()
                                 forcesize = 0
-                                # Fix an image with a wrong size
+                                # Fix image with wrong size
                                 if file.endswith("ETC.VIN") and pos == 487424 and i == 0:
                                     forcesize = 42568
                                 tim = readTIM(f, forcesize)
@@ -187,13 +211,7 @@ def getDatRanges(file, extension):
                         elif section % 2 == 1:
                             # Script
                             stringrange = DATRange(pos, f.tell(), section)
-                            # Check for free space at the end of the section
-                            while f.tell() > pos:
-                                f.seek(-1, 1)
-                                if f.peek(1)[0] != 0x0:
-                                    break
-                            spacing = f.tell() % 16 if f.tell() % 16 > 0 else 16
-                            stringrange.free = f.tell() + spacing
+                            stringrange.free = getScriptFree(f, pos)
                             f.seek(stringrange.end)
                             stringranges.append(stringrange)
                         else:
