@@ -206,7 +206,7 @@
   j VWF_FIX
   nop
   VWF_FIX_RETURN:
-.org 0x8007bb14
+.org 0x8007bb0c
   VWF_FIX_ENDLINE:
 ;Increase the maximum line length
 .org 0x80077eac
