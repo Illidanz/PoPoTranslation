@@ -3,6 +3,7 @@ from hacktools import common, psx
 
 
 binranges = [(0, 38390), (832800, 835100)]
+freeranges = [(31856, 32398)]
 
 
 def detectEncodedString(f, encoding="shift_jis", startascii=[0x24, 0x25], singlebreak=False):
