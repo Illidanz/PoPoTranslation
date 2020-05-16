@@ -18,19 +18,6 @@
   .import "data/vwf.bin"
   .align
 
-  ;Check t9 to figure out if we need to add a $c
-  .macro CheckC,val
-    li t5,val
-    beq t5,t9,CHECKC_DONE
-    move t9,t5
-    li t5,0x24
-    sb t5,0x0(s0)
-    li t5,0x63
-    sb t5,0x1(s0)
-    addiu s0,s0,0x2
-    CHECKC_DONE:
-  .endmacro
-
   ;t5 = temp
   ;t9 = $c check
   ;a0 = char
@@ -52,8 +39,17 @@
   ;Handle char codes that start with $
   li t5,0x24
   beq a0,t5,ASCII_CCODES
+  ;Check t9 to figure out if we need to add a $c
+  li t5,0x1
+  beq t5,t9,ASCII_CHECKC_DONE
+  move t9,t5
+  li t5,0x24
+  sb t5,0x0(s0)
+  li t5,0x63
+  sb t5,0x1(s0)
+  addiu s0,s0,0x2
+  ASCII_CHECKC_DONE:
   ;Convert the ASCII character to SJIS using the lookup table
-  CheckC 0x1
   li t5,SJIS_LOOKUP
   addiu a0,a0,-0x20
   sll a0,a0,0x1
@@ -64,10 +60,9 @@
   sb a0,0x1(s0)
   addiu s0,s0,0x2
   addiu a1,a1,0x1
-  jr ra
-  ;Copy 2 bytes for SJIS and reset t9 for SJIS
+  jr ra :: nop
+  ;Copy 2 bytes for SJIS
   ASCII_SJIS:
-  CheckC 0x0
   lbu t5,0x1(a1)
   sb a0,0x0(s0)
   sb t5,0x1(s0)
@@ -139,11 +134,19 @@
   li t1,0x60
   li t2,VWF_LOOKUP
   bge s1,t1,VWF_JAP
-  ;Get the VWF width from the lookup table and return
+  ;Get the VWF width from the lookup table
   addu t2,t2,s1
   lbu t1,0x0(t2)
+  ;Check if > 0x10
+  li t2,0x10
+  bgt t1,t2,VWF_ALIGN :: nop
   j VWF_RETURN
   addu s4,s4,t1
+  ;Set the X position (*2) instead of adding to it
+  VWF_ALIGN:
+  sll t1,t1,0x1
+  j VWF_RETURN
+  move s4,t1
   ;Default to 0x8 for japanese characters
   VWF_JAP:
   addiu s4,s4,0x8
