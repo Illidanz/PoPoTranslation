@@ -122,7 +122,7 @@ def readImage(file):
     forcepal = -1
     if file.endswith("ETC_007.tim"):
         forcepal = 0
-    return tim, forcepal
+    return tim, False, forcepal
 
 
 def readTIM(f, forcesize):

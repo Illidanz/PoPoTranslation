@@ -37,7 +37,8 @@ def run():
                         fi.seek(imgrange.start)
                         fo.seek(imgrange.start)
                         tim = psx.readTIM(fi)
-                        psx.writeTIM(fo, tim, imgfile, 0 if imgfile.endswith("ETC_007.png") else -1)
+                        forcepal = 0 if imgfile.endswith("ETC_007.png") else -1
+                        psx.writeTIM(fo, tim, imgfile, False, forcepal)
                     # Loop all script files
                     for i in range(len(stringranges)):
                         # Get section data
