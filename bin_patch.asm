@@ -109,10 +109,8 @@ FontVRamY    equ 48
 .org 0x80016b54
 .area 0x34C
   ;Copy a character from a string to a buffer, converting it to SJIS if ASCII
-  ;If ASCII is encountered, $c is also written and t9 is set
   ;Also handles various control codes found in string
   ;t5 = temp
-  ;t9 = $c check
   ;a0 = char
   ;a1 = source pointer
   ;s0 = dest pointer
@@ -123,24 +121,21 @@ FontVRamY    equ 48
   ;0x1f: the string was redirected to another location
   li t5,0x1f
   beq a0,t5,ASCII_REDIRECT
-  ;If < 0x21, just copy the byte
-  li t5,0x21
+  ;0x1e: insert $c
+  li t5,0x1e
+  beq a0,t5,ASCII_INSERTC
+  ;If < 0x20, just copy the byte
+  li t5,0x20
   blt a0,t5,ASCII_COPY
+  ;Handle space
+  li t5,0x20
+  beq a0,t5,ASCII_SPACE
   ;Handle @
   li t5,0x40
   beq a0,t5,ASCII_COPY
   ;Handle char codes that start with $
   li t5,0x24
   beq a0,t5,ASCII_CCODES
-  ;Check t9 to figure out if we need to add a $c
-  li t5,0x1
-  beq t5,t9,ASCII_CHECKC_DONE
-  move t9,t5
-  li t5,0x24
-  sb t5,0x0(s0)
-  li t5,0x63
-  sb t5,0x1(s0)
-  addiu s0,s0,0x2
   ASCII_CHECKC_DONE:
   ;Convert the ASCII character to SJIS using the lookup table
   li t5,SJIS_LOOKUP
@@ -149,6 +144,15 @@ FontVRamY    equ 48
   addu a0,a0,t5
   lbu t5,0x0(a0)
   lbu a0,0x1(a0)
+  sb t5,0x0(s0)
+  sb a0,0x1(s0)
+  addiu s0,s0,0x2
+  addiu a1,a1,0x1
+  jr ra
+  ;Convert space to SJIS
+  ASCII_SPACE:
+  li t5,0x81
+  li a0,0x40
   sb t5,0x0(s0)
   sb a0,0x1(s0)
   addiu s0,s0,0x2
@@ -184,6 +188,15 @@ FontVRamY    equ 48
   addiu s0,s0,0x1
   j ASCII_CCODES_G :: nop
   ASCII_CCODES_DONE:
+  jr ra
+  ;Insert $c
+  ASCII_INSERTC:
+  li t5,0x24
+  sb t5,0x0(s0)
+  li t5,0x63
+  sb t5,0x1(s0)
+  addiu a1,a1,0x1
+  addiu s0,s0,0x2
   jr ra :: nop
   ;Just copy the character
   ASCII_COPY:
@@ -354,9 +367,6 @@ FontVRamY    equ 48
 .org 0x80049294
   ANIME_RETURN:
 
-;Reset t9 which we use to add a $c if we encounter ASCII
-.org 0x800777cc
-  move t9,zero
 ;Hook the function that copies the string in memory
 .org 0x800777dc
   j ASCII

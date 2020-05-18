@@ -91,9 +91,15 @@ def run():
                                             if spacing > 0:
                                                 animelines[j] = "<" + common.toHex(0x1e) + "><" + common.toHex(spacing * spacelen) + ">" + animeline
                                         newsjis = "|".join(animelines)
-                                    elif "%" not in newsjis:
-                                        # Only wordwrap if there are no sprintf codes
-                                        newsjis = common.wordwrap(newsjis, glyphs, 276, game.detectTextCode, 8)
+                                    else:
+                                        if "%" not in newsjis:
+                                            # Only wordwrap if there are no sprintf codes
+                                            newsjis = common.wordwrap(newsjis, glyphs, 276, game.detectTextCode, 8)
+                                        asciicode = "<" + common.toHex(0x1e) + ">"
+                                        if newsjis[0] == ">":
+                                            newsjis = ">" + asciicode + newsjis[1:]
+                                        else:
+                                            newsjis = asciicode + newsjis
                                     common.logDebug("Writing string at", fo.tell())
                                     length, x = game.writeEncodedString(fo, newsjis, maxlen)
                                     if length < 0:
