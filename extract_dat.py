@@ -1,7 +1,7 @@
 import codecs
 import os
 import game
-from hacktools import common, psx
+from hacktools import common
 
 
 def extractFile(f, range, filename):
@@ -37,7 +37,7 @@ def run():
                     scriptfile = file.replace(extension, "_" + str(i).zfill(3))
                     extractFile(f, stringrange, outscript + scriptfile + ".bin")
                     detectfunc = game.detectEncodedString if stringrange.type != 1 else game.detectVINString
-                    strings, positions = psx.extractBinaryStrings(infolder + file, [(stringrange.start, stringrange.end)], detectfunc)
+                    strings, positions = common.extractBinaryStrings(infolder + file, (stringrange.start, stringrange.end), detectfunc)
                     if len(strings) > 0:
                         common.logDebug("Processing script file", scriptfile, vars(stringrange))
                         out.write("!FILE:" + scriptfile + "\n")

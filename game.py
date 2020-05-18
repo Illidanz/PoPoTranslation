@@ -58,6 +58,13 @@ def writeEncodedString(f, s, maxlen=0, encoding="shift_jis", singlebreak=False):
             f.write(bytes.fromhex(code))
             x += 8
             i += 2
+        elif c == "<" and x < len(s) - 3 and s[x+3] == ">":
+            if maxlen > 0 and i+1 > maxlen:
+                return -1, x
+            code = s[x+1] + s[x+2]
+            f.write(bytes.fromhex(code))
+            x += 3
+            i += 1
         elif c == "|" or c == ">":
             if maxlen > 0 and i+1 > maxlen:
                 return -1, x
@@ -133,10 +140,12 @@ def readTIM(f, forcesize):
     return False
 
 
-def getFontGlyphs(file):
+def getFontGlyphs(file, first=True):
     glyphs = {}
     fontglyphs = "!\"%&'()**,-./0123456789:;<=>?ABC EFGHIJKLMNOPQRSTUVWXYZ[];abcdefghijklmnopqrstuvwxyz_______D~___"
     with common.Stream(file, "rb") as f:
+        if not first:
+            f.seek(0x60)
         for i in range(len(fontglyphs)):
             width = f.readByte()
             glyphs[fontglyphs[i]] = common.FontGlyph(0, width, width)
