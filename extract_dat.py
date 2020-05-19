@@ -27,8 +27,6 @@ def run():
         for file in common.showProgress(files):
             if "/SOUND" in file:
                 continue
-            if "ETC.VIN" not in file:
-                continue
             common.logDebug("Processing", file)
             extension = os.path.splitext(file)[1]
             stringranges, imgranges, otherranges = game.getDatRanges(infolder + file, extension)
