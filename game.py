@@ -15,7 +15,7 @@ def detectEncodedString(f, encoding="shift_jis", startascii=[0x24, 0x25], single
         elif b1 == 0x0A and singlebreak:
             ret += "|"
         elif b1 == 0x09 and 0x09 in startascii:
-            ret += ">"
+            ret += "<09>"
         elif b1 >= 0x20 and b1 <= 0x7e and (len(ret) > 0 or b1 in startascii):
             ret += chr(b1)
         else:
@@ -65,10 +65,10 @@ def writeEncodedString(f, s, maxlen=0, encoding="shift_jis", singlebreak=False):
             f.write(bytes.fromhex(code))
             x += 3
             i += 1
-        elif c == "|" or c == ">":
+        elif c == "|":
             if maxlen > 0 and i+1 > maxlen:
                 return -1, x
-            f.writeByte(0x0A if c == "|" else 0x09)
+            f.writeByte(0x0A)
             i += 1
         elif ord(c) < 128:
             if maxlen > 0 and i+1 > maxlen:
@@ -95,6 +95,8 @@ def detectTextCode(s, i=0):
         return 2
     if s[i] == "@":
         return 1
+    if s[i] == "<":
+        return 4
     return 0
 
 
@@ -162,6 +164,13 @@ def getScriptFree(f, pos):
     return f.tell() + padding
 
 
+def addStringRange(f, start, end, section, pos):
+    stringrange = DATRange(start, end, section)
+    stringrange.free = getScriptFree(f, pos)
+    f.seek(stringrange.end)
+    return stringrange
+
+
 class DATRange:
     start = 0
     end = 0
@@ -193,10 +202,8 @@ def getDatRanges(file, extension):
                             # Fix image with wrong size
                             if file.endswith("ETC.VIN") and pos == 1732608:
                                 imgrange.end -= 0x3600
-                                stringrange = DATRange(imgrange.end, imgrange.end + 0x3600, section)
-                                stringrange.free = getScriptFree(f, pos)
-                                f.seek(stringrange.end)
-                                stringranges.append(stringrange)
+                                # Item descriptions
+                                stringranges.append(addStringRange(f, imgrange.end, imgrange.end + 0x3600, section, pos))
                             imgranges.append(imgrange)
                         elif section == 2 or (section == 3 and extension == ".VIN") or section == 4:
                             # Image
@@ -206,24 +213,30 @@ def getDatRanges(file, extension):
                             while f.tell() < size - 4:
                                 timpos = f.tell()
                                 forcesize = 0
-                                # Fix image with wrong size
-                                if file.endswith("ETC.VIN") and pos == 487424 and i == 0:
-                                    forcesize = 42568
+                                # Fix images with wrong size
+                                if file.endswith("ETC.VIN"):
+                                    if pos == 487424 and i == 0:
+                                        forcesize = 42568
+                                    elif pos == 1902592 and i == 0:
+                                        forcesize = 89888
+                                    elif pos == 1902592 and i == 1:
+                                        forcesize = 154614
                                 tim = readTIM(f, forcesize)
                                 if tim is None:
+                                    if file.endswith("ETC.VIN") and pos == 1902592 and i == 3:
+                                        # Monster/Skill descriptions
+                                        stringranges.append(addStringRange(f, timpos, timpos + 8128, section, timpos))
+                                        stringranges.append(addStringRange(f, timpos + 8128, sectionpos, section, timpos + 8128))
                                     break
                                 elif tim:
                                     imgranges.append(DATRange(timpos, f.tell(), section))
                                 else:
-                                    otherranges.append(DATRange(timpos, f.tell(), section))
+                                    otherranges.append(DATRange(timpos, sectionpos, section))
                                 i += 1
                             f.seek(sectionpos)
                         elif section % 2 == 1:
                             # Script
-                            stringrange = DATRange(pos, f.tell(), section)
-                            stringrange.free = getScriptFree(f, pos)
-                            f.seek(stringrange.end)
-                            stringranges.append(stringrange)
+                            stringranges.append(addStringRange(f, pos, f.tell(), section, pos))
                         else:
                             # Unknown, probably map data?
                             otherranges.append(DATRange(pos, f.tell(), section))
