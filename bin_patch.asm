@@ -116,7 +116,7 @@ FontVRamY    equ 48
   ;s0 = dest pointer
   CopyASCII:
   ;Copy both bytes for sjis characters
-  li t5,0x79
+  li t5,0x7f
   bgt a0,t5,ASCII_SJIS
   ;0x1f: the string was redirected to another location
   li t5,0x1f
