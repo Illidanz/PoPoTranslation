@@ -52,7 +52,7 @@ def repack(no_bin, exe, dat, mov, deb):
         import repack_mov
         repack_mov.run()
     if all or exe or deb:
-        psx.repackEXE(game.binranges, game.freeranges, game.detectEXEString, game.writeEXEString, "shift_jis", "#", exein, exeout)
+        psx.repackEXE(game.binranges, game.freeranges, game.manualptr, game.detectEXEString, game.writeEXEString, "shift_jis", "#", exein, exeout)
         labels = {"DEBUG": 1} if deb else {}
         common.armipsPatch(common.bundledFile("bin_patch.asm"), labels=labels)
     if not no_bin:

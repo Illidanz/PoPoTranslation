@@ -14,6 +14,28 @@ freeranges = [
     (0x855C,  0x85EA),
     (0x877C,  0x8B2A)
 ]
+manualptr = {
+    # Formation 0%d
+    0x80017434: [(0x8008a0f8, "a1"), (0x8008a338, "a1")],
+    # You defeated the monsters!
+    0x80010BF8: [(0x8003d534, "a1")],
+    # Pietro and his friends have fallen.
+    0x80010C24: [(0x8003d704, "a1")],
+    # Pietro and his friends ran away.
+    0x80010C54: [(0x8003d7e0, "a1")],
+    # Everyone ran away!
+    0x80010C70: [(0x8003d8a8, "a1")],
+    # The enemy caught up!
+    0x80010C84: [(0x8003d920, "a1")],
+    # They are now level %d.
+    0x80010FDC: [(0x80044aa0, "a1")],
+    # They learned %s.
+    0x80011034: [(0x80044b2c, "a1"), (0x80044b58, "a1")],
+    # %s gained %d
+    0x80011048: [(0x80045120, "a1")],
+    # %s and his friends gained %d
+    0x80011054: [(0x80045110, "a1"), (0x80045180, "a1")],
+}
 
 
 def detectEncodedString(f, encoding="shift_jis", startascii=[0x24, 0x25], singlebreak=False):
