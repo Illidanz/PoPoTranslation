@@ -1,9 +1,19 @@
 import os
 from hacktools import common, psx
 
-
-binranges = [(0, 38390), (832800, 835100)]
-freeranges = [(31856, 32398)]
+binranges = [
+    (0x0,     0x95F6),
+    (0xCB520, 0xCBE1C)
+]
+freeranges = [
+    (0x7C70,  0x7E8E),
+    (0x8064,  0x808A),
+    (0x81F0,  0x8206),
+    (0x82A8,  0x82F2),
+    (0x8518,  0x854A),
+    (0x855C,  0x85EA),
+    (0x877C,  0x8B2A)
+]
 
 
 def detectEncodedString(f, encoding="shift_jis", startascii=[0x24, 0x25], singlebreak=False):
