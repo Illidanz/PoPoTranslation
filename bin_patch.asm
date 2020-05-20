@@ -5,6 +5,7 @@ ClearImage   equ 0x8009d0fc
 LoadImage    equ 0x8009d190
 MoveImage    equ 0x8009d258
 DrawSync     equ 0x8009cf68
+strlen       equ 0x8009b920
 ;Other locations/values
 DebugEnabled equ 0x800f4054
 FontTable    equ 0x800c49cc
@@ -306,6 +307,46 @@ FontVRamY    equ 48
   or a0,a0,a1
   j ANIME_READ_CHAR
   addu s0,s0,a0
+
+  ;Correctly calculate the string length with redirects and VWF
+  ;a0 = str pointer
+  ;v0 = result
+  STRLEN_VWF:
+  clear v0
+  STRLEN_LOOP:
+  lbu t0,0x0(a0) :: nop
+  ;Return on 0
+  beq t0,zero,STRLEN_RET
+  ;Skip 0x1e
+  li t1,0x1e
+  beq t0,t1,STRLEN_SKIP
+  ;Handle redirect on 0x1f
+  li t1,0x1f
+  beq t0,t1,STRLEN_REDIRECT
+  ;Simplified VWF
+  li t1,0x20
+  beq t0,t1,STRLEN_SHORT
+  li t1,0x69
+  beq t0,t1,STRLEN_SHORT
+  li t1,0x6c
+  beq t0,t1,STRLEN_SHORT :: nop
+  addiu v0,v0,0x1
+  ;Increase v0 and loop
+  STRLEN_SHORT:
+  addiu v0,v0,0x1
+  STRLEN_SKIP:
+  j STRLEN_LOOP
+  addiu a0,a0,0x1
+  STRLEN_REDIRECT:
+  lb t0,0x2(a0)
+  lbu t1,0x1(a0)
+  sll t0,t0,0x8
+  or t0,t0,t1
+  j STRLEN_LOOP
+  addu a0,a0,t0
+  STRLEN_RET:
+  jr ra
+  srl v0,v0,0x1
 .endarea
 
 ;Anime sections text
@@ -399,6 +440,28 @@ FontVRamY    equ 48
 .org 0x80077eac
   li v1,0x14
 
+;Hook the strlen call for character names
+.org 0x8008ee18
+  jal STRLEN_VWF
+;Tweak the spacing (Add 5 instead of 4)
+.org 0x8008ee38
+  addiu v0,v0,0x5
+;Hook for battle dialog choices
+.org 0x80070834
+  jal STRLEN_VWF
+;Hook for spell names
+.org 0x8003bbd8
+  jal STRLEN_VWF
+;Hook for dialog choices and add some space
+.org 0x8007e4a4
+  jal STRLEN_VWF
+  nop
+  addiu s3,v0,0x1
+;Hook for book monster name
+.org 0x800879ac
+  jal STRLEN_VWF
+
+
 ;Swap Circle and Cross
 .org 0x80057010
   j CONTROLLER :: nop
@@ -411,5 +474,11 @@ FontVRamY    equ 48
   .skip 4 ;jal
   sh s0,0x4054(at)
 .endif
+
+;nop printf to avoid errors with replaced error strings
+.org 0x8009b910
+  nop
+  jr ra
+  nop
 
 .close
