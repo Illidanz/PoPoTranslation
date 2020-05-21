@@ -7,6 +7,7 @@ MoveImage    equ 0x8009d258
 DrawSync     equ 0x8009cf68
 strlen       equ 0x8009b920
 ;Other locations/values
+RenderString equ 0x8007c4e8
 DebugEnabled equ 0x800f4054
 FontTable    equ 0x800c49cc
 FontVRamX    equ 1024 - (256 / 4)
@@ -20,11 +21,14 @@ FontVRamY    equ 48
 ;Replace the anime text rendering function
 .org 0x80048f24
 .area 0x2C0
+  ;----------------------------------
+  ;Lookup tables
+  ;----------------------------------
   ;ASCII to SJIS lookup table
   SJIS_LOOKUP:
   .sjisn "　！”＃＄％＆"
   ;Fix ' since it doesn't get encoded correctly
-  db 0x81 :: db 0x66
+  .db 0x81 :: .db 0x66
   ;Also change + to * and _ to ;
   .sjisn "（）＋＋，－．／０１２３４５６７８９：＿〈＝〉？＠"
   .sjisn "ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿　"
@@ -37,7 +41,19 @@ FontVRamY    equ 48
   .definelabel VWF_LOOKUP2,VWF_LOOKUP + 0x60
   .align
 
-  ;Character rendering function
+  ;Escape strings to use in dialog/battle choices
+  DIALOG_STR:
+  .ascii " %s"
+  .db 0x1e :: .db 0xa :: .db 0x0
+  BATTLE_ABILITY_STR:
+  .ascii "    %s"
+  .db 0x1e :: .db 0xa :: .db 0x1e :: .db 0x0
+  .align
+
+
+  ;----------------------------------
+  ;MoveImage char rendering function
+  ;----------------------------------
   ;a0 = ASCII character
   ;a1 = x position
   ;a2 = y position
@@ -112,6 +128,9 @@ FontVRamY    equ 48
 ;Replace error codes
 .org 0x80016b54
 .area 0x34C
+  ;----------------------------------
+  ;CopyASCII function
+  ;----------------------------------
   ;Copy a character from a string to a buffer, converting it to SJIS if ASCII
   ;Also handles various control codes found in string
   ;t5 = temp
@@ -237,6 +256,10 @@ FontVRamY    equ 48
   j ASCII_SPRINTF_RETURN
   move v1,a1
 
+
+  ;----------------------------------
+  ;VWF function
+  ;----------------------------------
   ;s1 = character
   ;r20 = spacing
   VWF:
@@ -274,6 +297,10 @@ FontVRamY    equ 48
   j VWF_FIX_RETURN
   li v0,0x20
 
+
+  ;----------------------------------
+  ;Controller stuff
+  ;----------------------------------
   CONTROLLER:
   ;Swap bits 5 and 6 in a0 (controller buffer read from memory)
   srl t0,a0,0x5
@@ -289,7 +316,34 @@ FontVRamY    equ 48
   nor v1,v1,a0
   j CONTROLLER_RETURN :: nop
 
-  ;Moved some anime code here to fit the limited space
+  ;----------------------------------
+  ;Singular experience point
+  ;----------------------------------
+  ;a1 = str pointer
+  ;sp+0x20 = exp
+  EXP_POINT:
+  addiu t0,sp,0x20
+  lw t0,0x0(t0)
+  li t1,0x1
+  beq t0,t1,EXP_POINT_ONE
+  addiu t0,a1,0x11
+  li t1,0x73
+  sb t1,0x0(t0)
+  li t1,0x2e
+  sb t1,0x1(t0)
+  j EXP_POINT_JAL
+  EXP_POINT_ONE:
+  li t1,0x2e
+  sb t1,0x0(t0)
+  li t1,0x20
+  sb t1,0x1(t0)
+  EXP_POINT_JAL:
+  jal RenderString :: nop
+  j EXP_POINT_RETURN :: nop
+
+  ;----------------------------------
+  ;Anime related code (moved here to fit)
+  ;----------------------------------
   ANIME_RENDER_CODE:
   andi a1,s2,0xffff
   srl a1,a1,0x2
@@ -311,6 +365,10 @@ FontVRamY    equ 48
   j ANIME_READ_CHAR
   addu s0,s0,a0
 
+
+  ;----------------------------------
+  ;strlen function
+  ;----------------------------------
   ;Correctly calculate the string length with redirects and VWF
   ;a0 = str pointer
   ;v0 = result
@@ -352,7 +410,10 @@ FontVRamY    equ 48
   srl v0,v0,0x1
 .endarea
 
+
+;----------------------------------
 ;Anime sections text
+;----------------------------------
 ;s0 = string pointer
 ;s1 = char num
 ;s2 = x position
@@ -411,6 +472,10 @@ FontVRamY    equ 48
 .org 0x80049294
   ANIME_RETURN:
 
+
+;----------------------------------
+;ASCII hooks
+;----------------------------------
 ;Hook the function that copies the string in memory
 .org 0x800777dc
   j ASCII
@@ -427,6 +492,10 @@ FontVRamY    equ 48
 .org 0x80077958
   nop
 
+
+;----------------------------------
+;VWF hooks
+;----------------------------------
 ;Replace the fixed with for half characters
 .org 0x8007bae4
   j VWF
@@ -445,35 +514,61 @@ FontVRamY    equ 48
 .org 0x80078154
   li v0,0x14
 
-;Hook the strlen call for character names
+
+;----------------------------------
+;strlen hooks
+;----------------------------------
+;Character names
 .org 0x8008ee18
   jal STRLEN_VWF
 ;Tweak the spacing (Add 5 instead of 4)
 .org 0x8008ee38
   addiu v0,v0,0x5
-;Hook for battle dialog choices
+;Battle dialog choices
 .org 0x80070834
   jal STRLEN_VWF
-;Hook for spell names
+;Spell names
 .org 0x8003bbd8
   jal STRLEN_VWF
-;Hook for dialog choices and add some space
+;Dialog choices and add some space
 .org 0x8007e4a4
   jal STRLEN_VWF
   nop
   addiu s3,v0,0x1
-;Hook for book monster name
+;Battle related (critical, spell names, etc)
+.org 0x80040ab8
+  jal STRLEN_VWF
+  .skip 4
+  sll t1,v0,0x1
+;Book monster name (TODO)
 .org 0x800879ac
   jal STRLEN_VWF
 
-;Formation text x position (original: 0x19)
-.org 0x800c57c4
-;  dh 0x1a
-;Formation text width (original: 0x9)
-.org 0x8008a0d0
-  addiu a3,a1,0xb
-.org 0x8008a308
-  addiu v0,a2,0xb
+
+;----------------------------------
+;Misc
+;----------------------------------
+;Singular experience point
+.org 0x80045144
+  j EXP_POINT
+  nop
+  EXP_POINT_RETURN:
+
+;Fix dialog choices
+.org 0x8007e6a8
+.area 0x8,0x0
+  li a1,DIALOG_STR
+.endarea
+.org 0x8007e6c4
+.area 0x8,0x0
+  li a1,DIALOG_STR
+.endarea
+
+;Fix battle abilities list
+.org 0x8003be70
+.area 0x8,0x0
+  li a1,BATTLE_ABILITY_STR
+.endarea
 
 ;Swap Circle and Cross
 .org 0x80057010
@@ -493,5 +588,52 @@ FontVRamY    equ 48
   nop
   jr ra
   nop
+
+
+;----------------------------------
+;Textbox tweaks
+;----------------------------------
+;Formation text
+.org 0x800c57c4 ;x
+  ;dh 0x1a ;0x19
+.org 0x8008a0d0 ;width (First time)
+  addiu a3,a1,0xb ;0x9
+.org 0x8008a308 ;width (Update)
+  addiu v0,a2,0xb ;0x9
+
+;Menu magic list
+.org 0x80082f28 ;width
+  li v0,0x1a ;0x18
+
+;Pietro and his friends run away
+.org 0x8003d7a8 ;x/width
+  li a1,0x6  ;0x8
+  li a3,0x22 ;0x20
+
+;You have defeated the monsters!
+.org 0x8003d4f8 ;x/width
+  li a1,0x8  ;0xa
+  .skip 4
+  li a3,0x20 ;0x1e
+
+;Are you sure? (escape)
+.org 0x8003d320 ;x/width
+  li a1,0xd  ;0xc
+  .skip 4
+  li a3,0x18 ;0x1c
+
+;The enemy caught up
+.org 0x8003d8e8 ;x/width
+  li a1,0xa  ;0x9
+  .skip 4
+  li a3,0x1d ;0x1f
+
+;Battle magic list
+.org 0x8003bc58 ;width
+  addiu a3,a3,0x10 ;0x6
+
+;Battle abilities list
+.org 0x8003bca8 ;width
+  addiu a3,a3,0xf ;0x2
 
 .close

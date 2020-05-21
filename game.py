@@ -25,6 +25,8 @@ manualptr = {
     0x80010C54: [(0x8003d7e0, "a1")],
     # Everyone ran away!
     0x80010C70: [(0x8003d8a8, "a1")],
+    # Gained magic experience.
+    0x80011080: [(0x80045194, "a1")],
     # The enemy caught up!
     0x80010C84: [(0x8003d920, "a1")],
     # They are now level %d.
