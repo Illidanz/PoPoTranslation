@@ -1,17 +1,19 @@
 .psx
 
 ;Libary functions
-ClearImage   equ 0x8009d0fc
-LoadImage    equ 0x8009d190
-MoveImage    equ 0x8009d258
-DrawSync     equ 0x8009cf68
-strlen       equ 0x8009b920
+ClearImage       equ 0x8009d0fc
+LoadImage        equ 0x8009d190
+MoveImage        equ 0x8009d258
+DrawSync         equ 0x8009cf68
+strlen           equ 0x8009b920
 ;Other locations/values
-RenderString equ 0x8007c4e8
-DebugEnabled equ 0x800f4054
-FontTable    equ 0x800c49cc
-FontVRamX    equ 1024 - (256 / 4)
-FontVRamY    equ 48
+InitStringStruct equ 0x80077da8
+RenderString     equ 0x8007c4e8
+ClearString      equ 0x800782e0
+DebugEnabled     equ 0x800f4054
+FontTable        equ 0x800c49cc
+FontVRamX        equ 1024 - (256 / 4)
+FontVRamY        equ 48
 
 .open "data/repack/SCPS_100.23",0x8000F800
 
@@ -123,6 +125,30 @@ FontVRamY    equ 48
   addiu sp,sp,0x20
   jr ra
   move v0,t9
+
+  ;----------------------------------
+  ;Anime related code (moved here to fit)
+  ;----------------------------------
+  ANIME_RENDER_CODE:
+  andi a1,s2,0xffff
+  srl a1,a1,0x2
+  addiu a1,a1,0x140
+  sll a2,s3,0x4
+  jal CharRender
+  andi a2,a2,0xff
+  ;Go to the next character
+  addiu s0,s0,0x1
+  j ANIME_READ_CHAR
+  addu s2,s2,v0
+
+  ANIME_REDIRECT_CODE:
+  ;Sign extend here to handle negative values
+  lb a0,0x2(s0)
+  lbu a1,0x1(s0)
+  sll a0,a0,0x8
+  or a0,a0,a1
+  j ANIME_READ_CHAR
+  addu s0,s0,a0
 .endarea
 
 ;Replace error codes
@@ -316,6 +342,7 @@ FontVRamY    equ 48
   nor v1,v1,a0
   j CONTROLLER_RETURN :: nop
 
+
   ;----------------------------------
   ;Singular experience point
   ;----------------------------------
@@ -340,30 +367,6 @@ FontVRamY    equ 48
   EXP_POINT_JAL:
   jal RenderString :: nop
   j EXP_POINT_RETURN :: nop
-
-  ;----------------------------------
-  ;Anime related code (moved here to fit)
-  ;----------------------------------
-  ANIME_RENDER_CODE:
-  andi a1,s2,0xffff
-  srl a1,a1,0x2
-  addiu a1,a1,0x140
-  sll a2,s3,0x4
-  jal CharRender
-  andi a2,a2,0xff
-  ;Go to the next character
-  addiu s0,s0,0x1
-  j ANIME_READ_CHAR
-  addu s2,s2,v0
-
-  ANIME_REDIRECT_CODE:
-  ;Sign extend here to handle negative values
-  lb a0,0x2(s0)
-  lbu a1,0x1(s0)
-  sll a0,a0,0x8
-  or a0,a0,a1
-  j ANIME_READ_CHAR
-  addu s0,s0,a0
 
 
   ;----------------------------------
@@ -410,6 +413,148 @@ FontVRamY    equ 48
   srl v0,v0,0x1
 .endarea
 
+.org 0x80017F7C
+.area 0x3AE
+  .include "data/softsubs.asm"
+
+  CURRENT_SUB:
+  .dw 0  ;Pointer
+  .dw 0  ;Current frame
+  .dw 0  ;Struct pointer
+
+  ;----------------------------------
+  ;Softsubs function
+  ;----------------------------------
+  ;a0 = str pointer
+  LineRender:
+  ;Setup stack
+  addiu sp,sp,-0x30
+  sw ra,0x0(sp)
+  sw a0,0x4(sp)
+  sw a1,0x8(sp)
+  sw a2,0xc(sp)
+  sw a3,0x2c(sp)
+  ;Check current struct pointer
+  li a0,CURRENT_SUB + 0x8
+  lw a0,0x0(a0) :: nop
+  beq a0,zero,LINE_RENDER_STR :: nop
+  jal ClearString :: nop
+  LINE_RENDER_STR:
+  ;Call InitStringStruct
+  li a0,0x3
+  li a1,0x4
+  li a2,0x18
+  li a3,0x23
+  li v0,0x1b
+  sw v0,0x10(sp)
+  sw zero,0x14(sp)
+  sw zero,0x18(sp)
+  sw zero,0x1c(sp)
+  sw zero,0x20(sp)
+  sw zero,0x24(sp)
+  jal InitStringStruct
+  sw zero,0x28(sp)
+  ;Store this in memory
+  li a0,CURRENT_SUB + 0x8
+  sw v0,0x0(a0)
+  move a0,v0
+  ;Call RenderString
+  lw a1,0x4(sp)
+  jal RenderString :: nop
+  ;Return
+  lw ra,0x0(sp)
+  lw a0,0x4(sp)
+  lw a1,0x8(sp)
+  lw a2,0xc(sp)
+  lw a3,0x2c(sp)
+  addiu sp,sp,0x30
+  jr ra :: nop
+
+  ;----------------------------------
+  ;Called every frame, check the timing
+  ;----------------------------------
+  SUB_FRAME:
+  addiu sp,sp,-0x10
+  sw ra,0x0(sp)
+  ;Check the current sub pointer
+  li t0,CURRENT_SUB
+  lw a0,0x0(t0) :: nop
+  ;Jump out if 0
+  beq a0,zero,SUB_FRAME_RET
+  ;Increase the frame counter
+  lw t2,0x4(t0) :: nop
+  addiu t2,t2,0x1
+  sw t2,0x4(t0)
+  ;Get the next frame number and compare it
+  lbu t0,0x1(a0)
+  lbu t3,0x0(a0)
+  sll t0,t0,0x8
+  or t0,t0,t3
+  bne t0,t2,SUB_FRAME_RET
+  ;Check the byte after for 0
+  addiu a0,a0,0x2
+  lbu t0,0x0(a0) :: nop
+  beq t0,zero,SUB_FRAME_CLEAR :: nop
+  ;Render the current line
+  jal LineRender :: nop
+  ;Read until 0
+  SUB_FRAME_LOOP:
+  lbu t0,0x1(a0) :: nop
+  bne t0,zero,SUB_FRAME_LOOP
+  addiu a0,a0,0x1
+  j SUB_FRAME_DONE
+  SUB_FRAME_CLEAR:
+  ;Clear the current line
+  li t0,CURRENT_SUB + 0x8
+  move t1,a0
+  lw a0,0x0(t0)
+  sw zero,0x0(t0)
+  jal ClearString :: nop
+  move a0,t1
+  SUB_FRAME_DONE:
+  ;Store the pointer back in memory
+  addiu a0,a0,0x1
+  li t0,CURRENT_SUB
+  sw a0,0x0(t0)
+  SUB_FRAME_RET:
+  lw ra,0x0(sp)
+  addiu sp,sp,0x10
+  jr ra :: nop
+
+  ;----------------------------------
+  ;Called when a sound file is played
+  ;----------------------------------
+  ;t0 = sound file?
+  SUB_START:
+  addiu sp,sp,-0x10
+  sw ra,0x0(sp)
+  sw t1,0x4(sp)
+  sw t2,0x8(sp)
+  sw v0,0xc(sp)
+  ;Check if the sound file matches one of the softsubs
+  li t1,SUB_DATA :: nop
+  SUB_START_LOOP:
+  lw t2,0x0(t1) :: nop
+  beq t2,zero,SUB_CALL :: nop
+  beq t2,t0,SUB_FOUND :: nop
+  j SUB_START_LOOP
+  addiu t1,t1,0x8
+  ;Found one, set the values
+  SUB_FOUND:
+  lw t2,0x4(t1)
+  li t1,CURRENT_SUB
+  sw zero,0x4(t1)
+  sw t2,0x0(t1)
+  ;Regular call
+  SUB_CALL:
+  lw t1,0x4(sp)
+  jal 0x800ae218
+  lw t2,0x8(sp)
+  lw v0,0xc(sp)
+  lw ra,0x0(sp)
+  addiu sp,sp,0x10
+  jr ra :: nop
+.endarea
 
 ;----------------------------------
 ;Anime sections text
@@ -543,6 +688,17 @@ FontVRamY    equ 48
 ;Book monster name (TODO)
 .org 0x800879ac
   jal STRLEN_VWF
+
+
+;----------------------------------
+;Softsubs hooks
+;----------------------------------
+;Sound open
+.org 0x8007d938
+  jal SUB_START
+;Frame
+.org 0x800a79d0
+  j SUB_FRAME
 
 
 ;----------------------------------
