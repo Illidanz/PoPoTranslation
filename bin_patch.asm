@@ -65,15 +65,15 @@ FontVRamY        equ 48
   sw ra,0x0(sp)
   ;Check if it's a space
   li v0,0x20
-  bne a0,v0,CHAR_RENDER_NOSPACE
+  bne a0,v0,@@nospace
   ;Return the space VWF value
-  CHAR_RENDER_SPACE:
+  @@space:
   li v0,VWF_LOOKUP2
   li a0,0x20
   addu v0,v0,a0
-  j CHAR_RENDER_RETURN
+  j @@ret
   lbu t9,0x0(v0)
-  CHAR_RENDER_NOSPACE:
+  @@nospace:
   ;ASCII to SJIS
   li v0,SJIS_LOOKUP
   addiu a0,a0,-0x20
@@ -86,15 +86,15 @@ FontVRamY        equ 48
   ;xx xx 00 yy 00 (x = sjis, y = index)
   li t0,FontTable-0x5
   li v1,0x100
-  CHAR_RENDER_FONT:
+  @@font:
   addiu t0,t0,0x5
   addiu v1,v1,-0x1
   ;If 0x100 is reached, just render a space
-  beq v1,zero,CHAR_RENDER_SPACE
+  beq v1,zero,@@space
   lbu t1,0x0(t0) :: nop
-  bne v0,t1,CHAR_RENDER_FONT
+  bne v0,t1,@@font
   lbu t1,0x1(t0) :: nop
-  bne a0,t1,CHAR_RENDER_FONT :: nop
+  bne a0,t1,@@font :: nop
   lbu a0,0x3(t0)
   ;Get VWF value
   li t0,VWF_LOOKUP2
@@ -120,7 +120,7 @@ FontVRamY        equ 48
   ;MoveImage(*source_rect, dest_x, dest_y)
   jal MoveImage
   sh v0,0x1e(sp)
-  CHAR_RENDER_RETURN:
+  @@ret:
   lw ra,0x0(sp)
   addiu sp,sp,0x20
   jr ra
@@ -166,26 +166,25 @@ FontVRamY        equ 48
   CopyASCII:
   ;Copy both bytes for sjis characters
   li t5,0x7f
-  bgt a0,t5,ASCII_SJIS
+  bgt a0,t5,@@sjis
   ;0x1f: the string was redirected to another location
   li t5,0x1f
-  beq a0,t5,ASCII_REDIRECT
+  beq a0,t5,@@redirect
   ;0x1e: insert $c
   li t5,0x1e
-  beq a0,t5,ASCII_INSERTC
+  beq a0,t5,@@insertC
   ;If < 0x20, just copy the byte
   li t5,0x20
-  blt a0,t5,ASCII_COPY
+  blt a0,t5,@@copy
   ;Handle space
   li t5,0x20
-  beq a0,t5,ASCII_SPACE
+  beq a0,t5,@@space
   ;Handle @
   li t5,0x40
-  beq a0,t5,ASCII_COPY
+  beq a0,t5,@@copy
   ;Handle char codes that start with $
   li t5,0x24
-  beq a0,t5,ASCII_CCODES
-  ASCII_CHECKC_DONE:
+  beq a0,t5,@@ccodes
   ;Convert the ASCII character to SJIS using the lookup table
   li t5,SJIS_LOOKUP
   addiu a0,a0,-0x20
@@ -199,7 +198,7 @@ FontVRamY        equ 48
   addiu a1,a1,0x1
   jr ra
   ;Convert space to SJIS
-  ASCII_SPACE:
+  @@space:
   li t5,0x81
   li a0,0x40
   sb t5,0x0(s0)
@@ -208,7 +207,7 @@ FontVRamY        equ 48
   addiu a1,a1,0x1
   jr ra :: nop
   ;Copy 2 bytes for SJIS
-  ASCII_SJIS:
+  @@sjis:
   lbu t5,0x1(a1)
   sb a0,0x0(s0)
   sb t5,0x1(s0)
@@ -216,7 +215,7 @@ FontVRamY        equ 48
   addiu s0,s0,0x2
   jr ra :: nop
   ;Copy 2 bytes for control codes
-  ASCII_CCODES:
+  @@ccodes:
   lbu t5,0x1(a1)
   sb a0,0x0(s0)
   sb t5,0x1(s0)
@@ -224,22 +223,22 @@ FontVRamY        equ 48
   addiu s0,s0,0x2
   ;Check for $g code
   li a0,0x67
-  bne a0,t5,ASCII_CCODES_DONE
+  bne a0,t5,@@ccodesDone
   ;For $g codes, keep copying until it finds numbers
-  ASCII_CCODES_G:
+  @@ccodesG:
   lbu t5,0x0(a1)
   li a0,0x3a
   addiu t5,t5,-0x2f
-  bge t5,a0,ASCII_CCODES_DONE
+  bge t5,a0,@@ccodesDone
   lbu t5,0x0(a1)
   addiu a1,a1,0x1
   sb t5,0x0(s0)
   addiu s0,s0,0x1
-  j ASCII_CCODES_G :: nop
-  ASCII_CCODES_DONE:
+  j @@ccodesG :: nop
+  @@ccodesDone:
   jr ra
   ;Insert $c
-  ASCII_INSERTC:
+  @@insertC:
   li t5,0x24
   sb t5,0x0(s0)
   li t5,0x63
@@ -248,13 +247,13 @@ FontVRamY        equ 48
   addiu s0,s0,0x2
   jr ra :: nop
   ;Just copy the character
-  ASCII_COPY:
+  @@copy:
   sb a0,0x0(s0)
   addiu a1,a1,0x1
   addiu s0,s0,0x1
   jr ra
   ;Add the new address to the source and return
-  ASCII_REDIRECT:
+  @@redirect:
   lbu t5,0x2(a1)
   lbu a0,0x1(a1)
   sll t5,t5,0x8
@@ -264,14 +263,14 @@ FontVRamY        equ 48
 
   ASCII:
   ;Return to normal execution to handle %
-  beq v1,v0,ASCII_PERC
+  beq v1,v0,@@perc
   ;Call the function
   move a0,v1
   jal CopyASCII
   move a1,s1
   j ASCII_RETURN
   move s1,a1
-  ASCII_PERC:
+  @@perc:
   j ASCII_RETURN_PERC :: nop
 
   ASCII_SPRINTF:
@@ -292,22 +291,22 @@ FontVRamY        equ 48
   ;Skip japanese characters
   li t1,0x60
   li t2,VWF_LOOKUP
-  bge s1,t1,VWF_JAP
+  bge s1,t1,@@jap
   ;Get the VWF width from the lookup table
   addu t2,t2,s1
   lbu t1,0x0(t2)
   ;Check if > 0x10
   li t2,0x10
-  bgt t1,t2,VWF_ALIGN :: nop
+  bgt t1,t2,@@align :: nop
   j VWF_RETURN
   addu s4,s4,t1
   ;Set the X position (*2) instead of adding to it
-  VWF_ALIGN:
+  @@align:
   sll t1,t1,0x1
   j VWF_RETURN
   move s4,t1
   ;Default to 0x8 for japanese characters
-  VWF_JAP:
+  @@jap:
   addiu s4,s4,0x8
   j VWF_RETURN :: nop
 
@@ -316,10 +315,10 @@ FontVRamY        equ 48
   lbu s1,0x38(v0)
   lbu v0,0x39(v0) :: nop
   addu v0,s1,v0
-  bgt v0,zero,VWF_FIX_NOTZERO :: nop
+  bgt v0,zero,@@notZero :: nop
   j VWF_FIX_ENDLINE
   li v0,0x20
-  VWF_FIX_NOTZERO:
+  @@notZero:
   j VWF_FIX_RETURN
   li v0,0x20
 
@@ -352,19 +351,19 @@ FontVRamY        equ 48
   addiu t0,sp,0x20
   lw t0,0x0(t0)
   li t1,0x1
-  beq t0,t1,EXP_POINT_ONE
+  beq t0,t1,@@one
   addiu t0,a1,0x11
   li t1,0x73
   sb t1,0x0(t0)
   li t1,0x2e
   sb t1,0x1(t0)
-  j EXP_POINT_JAL
-  EXP_POINT_ONE:
+  j @@jal
+  @@one:
   li t1,0x2e
   sb t1,0x0(t0)
   li t1,0x20
   sb t1,0x1(t0)
-  EXP_POINT_JAL:
+  @@jal:
   jal RenderString :: nop
   j EXP_POINT_RETURN :: nop
 
@@ -377,38 +376,38 @@ FontVRamY        equ 48
   ;v0 = result
   STRLEN_VWF:
   clear v0
-  STRLEN_LOOP:
+  @@loop:
   lbu t0,0x0(a0) :: nop
   ;Return on 0
-  beq t0,zero,STRLEN_RET
+  beq t0,zero,@@ret
   ;Skip 0x1e
   li t1,0x1e
-  beq t0,t1,STRLEN_SKIP
+  beq t0,t1,@@skip
   ;Handle redirect on 0x1f
   li t1,0x1f
-  beq t0,t1,STRLEN_REDIRECT
+  beq t0,t1,@@redirect
   ;Simplified VWF
   li t1,0x20
-  beq t0,t1,STRLEN_SHORT
+  beq t0,t1,@@short
   li t1,0x69
-  beq t0,t1,STRLEN_SHORT
+  beq t0,t1,@@short
   li t1,0x6c
-  beq t0,t1,STRLEN_SHORT :: nop
+  beq t0,t1,@@short :: nop
   addiu v0,v0,0x1
   ;Increase v0 and loop
-  STRLEN_SHORT:
+  @@short:
   addiu v0,v0,0x1
-  STRLEN_SKIP:
-  j STRLEN_LOOP
+  @@skip:
+  j @@loop
   addiu a0,a0,0x1
-  STRLEN_REDIRECT:
+  @@redirect:
   lb t0,0x2(a0)
   lbu t1,0x1(a0)
   sll t0,t0,0x8
   or t0,t0,t1
-  j STRLEN_LOOP
+  j @@loop
   addu a0,a0,t0
-  STRLEN_RET:
+  @@ret:
   jr ra
   srl v0,v0,0x1
 .endarea
@@ -437,9 +436,9 @@ FontVRamY        equ 48
   ;Check current struct pointer
   li a0,CURRENT_SUB + 0x8
   lw a0,0x0(a0) :: nop
-  beq a0,zero,LINE_RENDER_STR :: nop
+  beq a0,zero,@@initStruct :: nop
   jal ClearString :: nop
-  LINE_RENDER_STR:
+  @@initStruct:
   ;Call InitStringStruct
   li a0,0x3
   li a1,0x3
@@ -480,7 +479,7 @@ FontVRamY        equ 48
   li t0,CURRENT_SUB
   lw a0,0x0(t0) :: nop
   ;Jump out if 0
-  beq a0,zero,SUB_FRAME_RET
+  beq a0,zero,@@ret
   ;Increase the frame counter
   lw t2,0x4(t0) :: nop
   addiu t2,t2,0x1
@@ -490,20 +489,20 @@ FontVRamY        equ 48
   lbu t3,0x0(a0)
   sll t0,t0,0x8
   or t0,t0,t3
-  bne t0,t2,SUB_FRAME_RET
+  bne t0,t2,@@ret
   ;Check the byte after for 0
   addiu a0,a0,0x2
   lbu t0,0x0(a0) :: nop
-  beq t0,zero,SUB_FRAME_CLEAR :: nop
+  beq t0,zero,@@clear :: nop
   ;Render the current line
   jal LineRender :: nop
   ;Read until 0
-  SUB_FRAME_LOOP:
+  @@loop:
   lbu t0,0x1(a0) :: nop
-  bne t0,zero,SUB_FRAME_LOOP
+  bne t0,zero,@@loop
   addiu a0,a0,0x1
-  j SUB_FRAME_DONE
-  SUB_FRAME_CLEAR:
+  j @@done
+  @@clear:
   ;Clear the current line
   li t0,CURRENT_SUB + 0x8
   move t1,a0
@@ -511,12 +510,12 @@ FontVRamY        equ 48
   sw zero,0x0(t0)
   jal ClearString :: nop
   move a0,t1
-  SUB_FRAME_DONE:
+  @@done:
   ;Store the pointer back in memory
   addiu a0,a0,0x1
   li t0,CURRENT_SUB
   sw a0,0x0(t0)
-  SUB_FRAME_RET:
+  @@ret:
   lw ra,0x0(sp)
   addiu sp,sp,0x10
   jr ra :: nop
@@ -533,20 +532,20 @@ FontVRamY        equ 48
   sw v0,0xc(sp)
   ;Check if the sound file matches one of the softsubs
   li t1,SUB_DATA :: nop
-  SUB_START_LOOP:
+  @@loop:
   lw t2,0x0(t1) :: nop
-  beq t2,zero,SUB_CALL :: nop
-  beq t2,t0,SUB_FOUND :: nop
-  j SUB_START_LOOP
+  beq t2,zero,@@call :: nop
+  beq t2,t0,@@found :: nop
+  j @@loop
   addiu t1,t1,0x8
   ;Found one, set the values
-  SUB_FOUND:
+  @@found:
   lw t2,0x4(t1)
   li t1,CURRENT_SUB
   sw zero,0x4(t1)
   sw t2,0x0(t1)
   ;Regular call
-  SUB_CALL:
+  @@call:
   lw t1,0x4(sp)
   jal 0x800ae218
   lw t2,0x8(sp)
@@ -575,43 +574,43 @@ FontVRamY        equ 48
   ;Check single-byte charcodes
   lbu a0,0x0(s0)
   li a2,0x1e
-  beq a0,a2,ANIME_SPACING
+  beq a0,a2,@@spacing
   li a2,0x1f
-  beq a0,a2,ANIME_REDIRECT
+  beq a0,a2,@@redirect
   li a2,0x0a
-  beq a0,a2,ANIME_NEWLINE
+  beq a0,a2,@@newline
   ;Check double-byte charcodes
   lbu a2,0x1(s0)
   sll a1,a0,0x8
   or a1,a1,a2
-  beq a1,zero,ANIME_NEWLINE_DOUBLE
+  beq a1,zero,@@newlineDouble
   li a2,0x7a7a
-  beq a1,a2,ANIME_RESETX
+  beq a1,a2,@@resetx
   li a2,0x6565
   beq a1,a2,ANIME_RETURN :: nop
   ;Setup CharRender parameters
   j ANIME_RENDER_CODE :: nop
   ;Start a new line
-  ANIME_NEWLINE_DOUBLE:
+  @@newlineDouble:
   addiu s0,s0,0x2
-  ANIME_NEWLINE:
+  @@newline:
   addiu s0,s0,0x1
   addiu s3,s3,0x1
   j ANIME_READ_CHAR
   li s2,0x0
   ;Add the next byte to s2
-  ANIME_SPACING:
+  @@spacing:
   lbu a0,0x1(s0)
   addiu s0,s0,0x2
   j ANIME_READ_CHAR
   addu s2,s2,a0
   ;Reset s2 and continue
-  ANIME_RESETX:
+  @@resetx:
   addiu s0,s0,0x2
   j ANIME_READ_CHAR
   li s2,0x0
   ;Add the redirect value to s0 and continue
-  ANIME_REDIRECT:
+  @@redirect:
   j ANIME_REDIRECT_CODE :: nop
 .endarea
 .org 0x80049294
