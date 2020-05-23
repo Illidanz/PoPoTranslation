@@ -442,9 +442,9 @@ FontVRamY        equ 48
   LINE_RENDER_STR:
   ;Call InitStringStruct
   li a0,0x3
-  li a1,0x4
+  li a1,0x3
   li a2,0x18
-  li a3,0x23
+  li a3,0x24
   li v0,0x1b
   sw v0,0x10(sp)
   sw zero,0x14(sp)
