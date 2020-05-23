@@ -281,6 +281,16 @@ FontVRamY        equ 48
   j ASCII_SPRINTF_RETURN
   move v1,a1
 
+  ASCII_SPRINTF_NUM:
+  ;Insert two spaces instead of one
+  sb v0,0x1(v1)
+  li v0,0x40 :: nop
+  sb v0,0x0(v1)
+  sb v0,0x2(v1)
+  addiu v1,v1,0x2
+  j ASCII_SPRINTF_NUM_RETURN
+  addiu a3,a3,0x2
+
 
   ;----------------------------------
   ;VWF function
@@ -635,6 +645,11 @@ FontVRamY        equ 48
 ;Don't increase s0 here
 .org 0x80077958
   nop
+;Write 2 spaces for each missing number in %nd sprintf codes
+.org 0x800774a4
+  j ASCII_SPRINTF_NUM
+  .skip 4
+  ASCII_SPRINTF_NUM_RETURN:
 
 
 ;----------------------------------
@@ -758,7 +773,17 @@ FontVRamY        equ 48
 
 ;Menu magic list
 .org 0x80082f28 ;width
-  li v0,0x1a ;0x18
+  li v0,0x19 ;0x18
+
+;Status magic
+.org 0x800803a0 ;LV (First time)
+  addiu a1,s1,0x6b ;0x60
+.org 0x800804e4 ;LV (Update)
+  addiu a1,s1,0x6b ;0x60
+.org 0x800803c0 ;EXP (First time)
+  addiu a1,s1,0x8f ;0x88
+.org 0x80080504 ;EXP (Update)
+  addiu a1,s1,0x8f ;0x88
 
 ;Pietro and his friends run away
 .org 0x8003d7a8 ;x/width
@@ -785,10 +810,10 @@ FontVRamY        equ 48
 
 ;Battle magic list
 .org 0x8003bc58 ;width
-  addiu a3,a3,0x10 ;0x6
+  addiu a3,a3,0xf ;0x6
 
 ;Battle abilities list
 .org 0x8003bca8 ;width
-  addiu a3,a3,0xf ;0x2
+  addiu a3,a3,0xd ;0x2
 
 .close
