@@ -227,8 +227,9 @@ FontVRamY        equ 48
   ;For $g codes, keep copying until it finds numbers
   @@ccodesG:
   lbu t5,0x0(a1)
+  li a0,0x2f
+  ble t5,a0,@@ccodesDone
   li a0,0x3a
-  addiu t5,t5,-0x2f
   bge t5,a0,@@ccodesDone
   lbu t5,0x0(a1)
   addiu a1,a1,0x1
