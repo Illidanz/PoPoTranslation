@@ -95,7 +95,7 @@ def run():
                                         # Only wordwrap if there are no sprintf codes
                                         newsjis = common.wordwrap(newsjis, glyphs, 274, game.detectTextCode, 8)
                                     if sectionname != "ROOT/ETC_001":
-                                        # Don't add 0x1e code for monster names
+                                        # Don't add 0x1e code for monster descriptions
                                         asciicode = "<" + common.toHex(0x1e) + ">"
                                         if newsjis[0] == "<":
                                             newsjis = newsjis[:4] + asciicode + newsjis[4:]
@@ -116,6 +116,9 @@ def run():
                                         # For non-anime lines, go back 3 characters
                                         if not anime:
                                             x -= 3
+                                            # Go back 1 more character if the last one is a $
+                                            if newsjis[x - 1] == "$":
+                                                x -= 1
                                         stringfit = newsjis[:x]
                                         stringrest = newsjis[x:]
                                         fo.seek(pos)
