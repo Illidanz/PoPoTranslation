@@ -772,6 +772,10 @@ FontVRamY        equ 48
   li a1,BATTLE_ABILITY_STR
 .endarea
 
+;Extend 1st movie to full length
+.org 0x800b6d30
+  .dw 0x3fa
+
 ;Swap Circle and Cross
 .org 0x80057010
   j CONTROLLER :: nop
