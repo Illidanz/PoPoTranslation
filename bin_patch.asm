@@ -421,6 +421,21 @@ FontVRamY        equ 48
   @@ret:
   jr ra
   srl v0,v0,0x1
+
+  BOOK_VWF:
+  bne a0,zero,@@notzero :: nop
+  li a0,0x20
+  @@notzero:
+  ;Get VWF value
+  li t0,VWF_LOOKUP
+  addu t0,t0,a0
+  lbu t1,0x0(t0)
+  ;Add it to the x position
+  li t0,0x800db29c
+  lw t2,0x0(t0) :: nop
+  addu t1,t2,t1
+  j BOOK_VWF_RETURN
+  sw t1,0x0(t0)
 .endarea
 
 .org 0x80017F7C
@@ -676,6 +691,22 @@ FontVRamY        equ 48
 
 
 ;----------------------------------
+;Monster book VWF
+;----------------------------------
+;Store character index in stack in place of a nop
+.org 0x8007c458
+  sw a3,0xc(sp)
+;Store 0 by default since the space gets skipped
+.org 0x8007c400
+  sw zero,0xc(sp)
+;Replace the 0x8007c1f4 function call
+.org 0x8007c4d0
+  j BOOK_VWF
+  lw a0,0xc(sp)
+  BOOK_VWF_RETURN:
+
+
+;----------------------------------
 ;strlen hooks
 ;----------------------------------
 ;Character names
@@ -700,7 +731,7 @@ FontVRamY        equ 48
   jal STRLEN_VWF
   .skip 4
   sll t1,v0,0x1
-;Book monster name (TODO)
+;Monster book name
 .org 0x800879ac
   jal STRLEN_VWF
 
@@ -816,5 +847,11 @@ FontVRamY        equ 48
 ;Battle abilities list
 .org 0x8003bca8 ;width
   addiu a3,a3,0xd ;0x2
+
+;Center monster book name
+.org 0x800879b4
+  move v1,v0
+  .skip 4
+  li a0,0x7
 
 .close
