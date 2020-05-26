@@ -3,7 +3,7 @@ import click
 import game
 from hacktools import common, psx
 
-version = "0.9.0"
+version = "0.10.0"
 cuein = "data/PoPoLoCrois Monogatari (Japan) (v1.1).cue"
 cueout = "data/PoPoLoCrois Monogatari (English).cue"
 binin = "data/PoPoLoCrois Monogatari (Japan) (v1.1).bin"
@@ -56,6 +56,8 @@ def repack(no_bin, exe, dat, mov, sub, deb):
         import repack_sub
         repack_sub.run()
     if all or exe or sub or deb:
+        # Repack the exe and run armips
+        game.generateZoneFile()
         psx.repackEXE(game.binranges, game.freeranges, game.manualptr, game.detectEXEString, game.writeEXEString, "shift_jis", "#", exein, exeout)
         labels = {"DEBUG": 1} if deb else {}
         common.armipsPatch(common.bundledFile("bin_patch.asm"), labels=labels)

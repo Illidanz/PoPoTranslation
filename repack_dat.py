@@ -94,13 +94,6 @@ def run():
                                     if "%" not in newsjis:
                                         # Only wordwrap if there are no sprintf codes
                                         newsjis = common.wordwrap(newsjis, glyphs, 274, game.detectTextCode, 8)
-                                    if sectionname != "ROOT/ETC_001":
-                                        # Don't add 0x1e code for monster descriptions
-                                        asciicode = "<" + common.toHex(0x1e) + ">"
-                                        if newsjis[0] == "<":
-                                            newsjis = newsjis[:4] + asciicode + newsjis[4:]
-                                        else:
-                                            newsjis = asciicode + newsjis
                                 common.logDebug("Writing string at", fo.tell())
                                 length, x = game.writeEncodedString(fo, newsjis, maxlen)
                                 if length < 0:

@@ -1,17 +1,20 @@
+import codecs
 import os
 from hacktools import common, psx
 
 binranges = [
     (0x0,     0x95F6),
+    (0xB632C, 0xB6393),
     (0xCB520, 0xCBE1C)
 ]
 freeranges = [
-    (0x7C70,  0x7E8E),
     (0x8064,  0x808A),
     (0x81F0,  0x8206),
     (0x82A8,  0x82F2),
     (0x8518,  0x854A),
-    (0x855C,  0x85EA)
+    (0x8B58,  0x8D06),
+    (0x8D1C,  0x8FBA),
+    (0x8FC4,  0x90BE)
 ]
 manualptr = {
     # Formation 0%d
@@ -39,6 +42,13 @@ manualptr = {
     # Shop gold
     0x800160E4: [(0x80071644, "a1")],
     0x800161B0: [(0x8007368c, "a1")],
+    # Various escape strings
+    0x800DADD4: [(0x8003adc8, "a1"), (0x8003ae40, "a1"), (0x8003b5c4, "a1")],
+    0x800DADE0: [(0x8003b5a8, "a1")],
+    0x800DADE8: [(0x8003be70, "a1")],
+    0x800DAE60: [(0x80040c38, "a1")],
+    0x800DAE78: [(0x800412d4, "a1")],
+    0x800DB2C8: [(0x8007e6a8, "a1"), (0x8007e6c4, "a1"), (0x8007f228, "a1"), (0x8007f34c, "a1"), (0x8007f560, "a1"), (0x800801d4, "a1")],
 }
 
 
@@ -152,6 +162,33 @@ def isSection(f):
         # common.logDebug("Section>>", common.toHex(f.tell()), common.toHex(unk1), common.toHex(unk2), common.toHex(unk3))
         return unk1
     return 0
+
+
+def generateZoneFile():
+    # Generate the zones.asm file
+    with open("data/zones.asm", "w") as f:
+        with codecs.open("data/zones.txt", "r", "utf-8") as fin:
+            zones = common.getSection(fin, "")
+        # Write all the translated zone names
+        i = 0
+        f.write("ZONE_START:\n")
+        for zone in zones:
+            f.write("ZONE_" + str(i) + ":\n")
+            f.write("  .asciiz \"" + zones[zone][0] + "\"\n")
+            i += 1
+        i = 0
+        f.write("\n.align\n")
+        f.write("ZONE_LOOKUP:\n")
+        for zone in zones:
+            # Sum up all the characters
+            sum = 0
+            sjis = zone.encode("shift_jis")
+            for c in sjis:
+                sum += c
+            f.write("  .dh 0x" + common.toHex(sum) + "\n")
+            f.write("  .dh ZONE_" + str(i) + " - ZONE_START\n")
+            i += 1
+        f.write("  .dh 0\n.align\n")
 
 
 def readImage(file):
