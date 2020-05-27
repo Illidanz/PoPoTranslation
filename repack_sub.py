@@ -36,9 +36,7 @@ def run():
             for i in range(len(lines)):
                 line = lines[i]
                 sub.write("  .dh {}\n".format(str(line[1])))
-                sub.write("  .db 0x1e\n")
                 sub.write("  .ascii \"{}\"\n".format(line[0].replace("|", "\" :: .db 0xa :: .ascii \"")))
-                sub.write("  .db 0x1e\n")
                 sub.write("  .db 0x0\n\n")
                 if i == len(lines) - 1 or line[2] != lines[i+1][1]:
                     sub.write("  .dh {}\n".format(str(line[2])))
