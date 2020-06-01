@@ -65,6 +65,12 @@ def repack(no_bin, exe, dat, mov, sub, deb):
         psx.repackBIN(binin, binout, cueout, "data/patch.xdelta")
 
 
+@common.cli.command()
+def test():
+    import extract_bin
+    extract_bin.run()
+
+
 if __name__ == "__main__":
     click.echo("PoPoTranslation version " + version)
     if not os.path.isdir("data"):
