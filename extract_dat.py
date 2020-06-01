@@ -36,7 +36,11 @@ def run():
                     stringrange = stringranges[i]
                     scriptfile = file.replace(extension, "_" + str(i).zfill(3))
                     extractFile(f, stringrange, outscript + scriptfile + ".bin")
-                    detectfunc = game.detectEncodedString if file.endswith(".DAT") else game.detectVINString
+                    # Extract ASCII for the ending credits
+                    if scriptfile == "EPISODE5/THEATER1_010":
+                        detectfunc = common.detectASCIIString
+                    else:
+                        detectfunc = game.detectEncodedString if file.endswith(".DAT") else game.detectVINString
                     strings, positions = common.extractBinaryStrings(infolder + file, [(stringrange.start, stringrange.end)], detectfunc)
                     if len(strings) > 0:
                         common.logDebug("Processing script file", scriptfile, vars(stringrange))

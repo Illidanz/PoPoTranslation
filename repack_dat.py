@@ -55,8 +55,11 @@ def run():
                             break
                     if allempty:
                         continue
-                    # Look for strings
-                    detectfunc = game.detectEncodedString if stringrange.type != 1 else game.detectVINString
+                    # Look for strings (ASCII for the ending credits)
+                    if sectionname == "EPISODE5/THEATER1_010":
+                        detectfunc = common.detectASCIIString
+                    else:
+                        detectfunc = game.detectEncodedString if stringrange.type != 1 else game.detectVINString
                     extendedstrings = {}
                     fi.seek(stringrange.start)
                     while fi.tell() < stringrange.end:
