@@ -5,7 +5,8 @@ import game
 from hacktools import common
 
 subfiles = [
-    ("NA_BUR01.XA[3].ass", 0x21c3)
+    ("NA_BUR01.XA[3].ass", 0x21c3),
+    ("NA_BUR01.XA[7].ass", 0x104)
 ]
 
 

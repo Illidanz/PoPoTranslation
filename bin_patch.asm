@@ -564,12 +564,11 @@ FontVRamY        equ 48
   sw ra,0x0(sp)
   sw t1,0x4(sp)
   sw t2,0x8(sp)
-  sw v0,0xc(sp)
   ;Check if the sound file matches one of the softsubs
   li t1,SUB_DATA :: nop
   @@loop:
   lw t2,0x0(t1) :: nop
-  beq t2,zero,@@call :: nop
+  beq t2,zero,@@ret :: nop
   beq t2,t0,@@found :: nop
   j @@loop
   addiu t1,t1,0x8
@@ -579,12 +578,33 @@ FontVRamY        equ 48
   li t1,CURRENT_SUB
   sw zero,0x4(t1)
   sw t2,0x0(t1)
-  ;Regular call
-  @@call:
+  ;Return
+  @@ret:
   lw t1,0x4(sp)
-  jal 0x800ae218
   lw t2,0x8(sp)
-  lw v0,0xc(sp)
+  lw ra,0x0(sp)
+  addiu sp,sp,0x10
+  jr ra :: nop
+
+  ;Called when a sound file is played
+  ;t0 = sound file?
+  SUB_VOICE_START:
+  addiu sp,sp,-0x10
+  sw ra,0x0(sp)
+  jal SUB_START :: nop
+  jal 0x800ae218 :: nop
+  lw ra,0x0(sp)
+  addiu sp,sp,0x10
+  jr ra :: nop
+
+  ;Called when a bgm file is played
+  ;s1 = sound file?
+  SUB_BGM_START:
+  addiu sp,sp,-0x10
+  sw ra,0x0(sp)
+  jal SUB_START
+  move t0,s1
+  jal 0x800ae77c :: nop
   lw ra,0x0(sp)
   addiu sp,sp,0x10
   jr ra :: nop
@@ -794,9 +814,6 @@ FontVRamY        equ 48
 .org 0x80078154
   li v0,0x14
 
-;.org 0x8007a548
-;  nop
-
 
 ;----------------------------------
 ;Monster book VWF
@@ -849,7 +866,10 @@ FontVRamY        equ 48
 ;----------------------------------
 ;Sound open
 .org 0x8007d938
-  jal SUB_START
+  jal SUB_VOICE_START
+;BGM start
+.org 0x8007d62c
+  jal SUB_BGM_START
 ;Frame
 .org 0x800a79d0
   j SUB_FRAME
