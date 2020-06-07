@@ -5,8 +5,8 @@ import game
 from hacktools import common
 
 subfiles = [
-    ("NA_BUR01.XA[3].ass", 0x21c3),
-    ("NA_BUR01.XA[7].ass", 0x104)
+    ("NA_BUR01.XA[3].ass", 0x21c3, 0),
+    ("NA_BUR01.XA[7].ass", 0x104,  0)
 ]
 
 
@@ -31,8 +31,8 @@ def run():
             for event in doc.events:
                 line = event.text.strip()
                 line = common.wordwrap(line, glyphs, 274, game.detectTextCode, 8)
-                linestart = common.deltaToFrame(event.start, 125)
-                lineend = common.deltaToFrame(event.end, 125)
+                linestart = common.deltaToFrame(event.start, 123) + subfile[2]
+                lineend = common.deltaToFrame(event.end, 123) + subfile[2]
                 lines.append((line, linestart, lineend))
             for i in range(len(lines)):
                 line = lines[i]

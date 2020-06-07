@@ -30,7 +30,7 @@ def run():
         common.makeFolder(repackmov)
         common.copyFile(infolder + file, outfolder + file)
         # Read the subtitles
-        subin = "data/" + file.replace(".MOV", ".ass")
+        subin = "data/work_SUB/" + file.replace(".MOV", ".ass")
         if not os.path.isfile(subin):
             continue
         with codecs.open(subin, "r", "utf-8-sig") as f:

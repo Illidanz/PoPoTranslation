@@ -837,9 +837,9 @@ FontVRamY        equ 48
 ;Character names
 .org 0x8008ee18
   jal STRLEN_VWF
-;Tweak the spacing (Add 5 instead of 4)
+;Tweak the spacing (Add 2 instead of 4)
 .org 0x8008ee38
-  addiu v0,v0,0x5
+  addiu v0,v0,0x2
 ;Battle dialog choices
 .org 0x80070834
   jal STRLEN_VWF
