@@ -93,6 +93,8 @@ def run():
                                         if spacing > 0:
                                             animelines[j] = "<" + common.toHex(0x1e) + "><" + common.toHex(spacing * spacelen) + ">" + animeline
                                     newsjis = "|".join(animelines)
+                                    # Split "ee" and "zz", 0x6565 and 0x7a7a are used as control codes
+                                    newsjis = newsjis.replace("ee", "e<1E><00>e").replace("zz", "z<1E><00>z")
                                 else:
                                     if "%" not in newsjis:
                                         # Only wordwrap if there are no sprintf codes

@@ -3,7 +3,7 @@ import click
 import game
 from hacktools import common, psx
 
-version = "0.10.0"
+version = "0.10.1"
 cuein = "data/PoPoLoCrois Monogatari (Japan) (v1.1).cue"
 cueout = "data/PoPoLoCrois Monogatari (English).cue"
 binin = "data/PoPoLoCrois Monogatari (Japan) (v1.1).bin"
