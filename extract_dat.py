@@ -39,6 +39,8 @@ def run():
                     # Extract ASCII for the ending credits
                     if scriptfile == "EPISODE5/THEATER1_010":
                         detectfunc = common.detectASCIIString
+                    elif scriptfile in game.animefiles:
+                        detectfunc = game.detectAnimeString
                     else:
                         detectfunc = game.detectEncodedString if file.endswith(".DAT") else game.detectVINString
                     strings, positions = common.extractBinaryStrings(infolder + file, [(stringrange.start, stringrange.end)], detectfunc)

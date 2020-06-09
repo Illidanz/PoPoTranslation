@@ -50,18 +50,42 @@ manualptr = {
     0x800DAE78: [(0x800412d4, "a1")],
     0x800DB2C8: [(0x8007e6a8, "a1"), (0x8007e6c4, "a1"), (0x8007f228, "a1"), (0x8007f34c, "a1"), (0x8007f560, "a1"), (0x800801d4, "a1")],
 }
+animefiles = [
+    "EPISODE1/THEATER1_047", "EPISODE1/THEATER1_049", "EPISODE1/THEATER2_000", "EPISODE1/THEATER2_013",
+    "EPISODE2/THEATER3_011", "EPISODE2/THEATER3_012", "EPISODE2/THEATER3_013", "EPISODE2/THEATER3_014", "EPISODE2/THEATER4_001",
+    "EPISODE3/THEATER3_005", "EPISODE3/THEATER3_007",
+    "EPISODE4/THEATER1_049", "EPISODE4/THEATER2_027"
+]
 
 
-def detectEncodedString(f, encoding="shift_jis", startascii=[0x24, 0x25], singlebreak=False):
+def detectEncodedString(f, encoding="shift_jis", startascii=[0x24, 0x25], singlebreak=False, anime=False):
     ret = ""
     while True:
         b1 = f.readByte()
+        if anime:
+            animebyte = f.readByte()
+            f.seek(-1, 1)
         if b1 == 0x00:
-            break
+            if anime and len(ret) > 0:
+                b2 = f.readByte()
+                b3 = f.readByte()
+                if b2 == 0 and b3 == 0:
+                    ret += "|"
+                    continue
+                else:
+                    f.seek(-2, 1)
+                    break
+            else:
+                break
         elif b1 == 0x0A and singlebreak:
             ret += "|"
         elif b1 == 0x09 and 0x09 in startascii:
             ret += "<09>"
+        elif anime and len(ret) > 0 and b1 == 0x65 and animebyte == 0x65:
+            f.seek(-1, 1)
+            break
+        elif anime and len(ret) > 0 and b1 == 0x7a and animebyte == 0x7a:
+            ret += "<7A><7A>"
         elif b1 >= 0x20 and b1 <= 0x7e and (len(ret) > 0 or b1 in startascii):
             ret += chr(b1)
         else:
@@ -79,6 +103,10 @@ def detectEncodedString(f, encoding="shift_jis", startascii=[0x24, 0x25], single
     if len(ret) == 1:
         return ""
     return ret
+
+
+def detectAnimeString(f, encoding="shift_jis"):
+    return detectEncodedString(f, encoding, anime=True)
 
 
 def detectVINString(f, encoding="shift_jis"):
@@ -129,6 +157,10 @@ def writeEncodedString(f, s, maxlen=0, encoding="shift_jis", singlebreak=False):
         x += 1
     f.writeByte(0x00)
     return i, x
+
+
+def writeAnimeString(f, s, maxlen=0, encoding="shift_jis"):
+    return writeEncodedString(f, s, maxlen, encoding)
 
 
 def writeEXEString(f, s, maxlen=0, encoding="shift_jis"):

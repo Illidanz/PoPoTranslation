@@ -58,6 +58,8 @@ def run():
                     # Look for strings (ASCII for the ending credits)
                     if sectionname == "EPISODE5/THEATER1_010":
                         detectfunc = common.detectASCIIString
+                    elif sectionname in game.animefiles:
+                        detectfunc = game.detectAnimeString
                     else:
                         detectfunc = game.detectEncodedString if stringrange.type != 1 else game.detectVINString
                     extendedstrings = {}
@@ -100,7 +102,10 @@ def run():
                                         # Only wordwrap if there are no sprintf codes
                                         newsjis = common.wordwrap(newsjis, glyphs, 274, game.detectTextCode, 8)
                                 common.logDebug("Writing string at", fo.tell())
-                                length, x = game.writeEncodedString(fo, newsjis, maxlen)
+                                if anime:
+                                    length, x = game.writeAnimeString(fo, newsjis, maxlen)
+                                else:
+                                    length, x = game.writeEncodedString(fo, newsjis, maxlen)
                                 if length < 0:
                                     # String doesn't fit, check if we've already moved it (skip this for anime)
                                     if newsjis in extendedstrings and not anime:
