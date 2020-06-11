@@ -13,7 +13,7 @@ freeranges = [
     (0x82A8,  0x82F2),
     (0x8518,  0x854A),
     (0x8B58,  0x8D06),
-    (0x8D1C,  0x8FBA),
+    (0x8D1C,  0x8EBA),  # 8fba?
     (0x8FC4,  0x90BE)
 ]
 manualptr = {
@@ -42,6 +42,22 @@ manualptr = {
     # Shop gold
     0x800160E4: [(0x80071644, "a1")],
     0x800161B0: [(0x8007368c, "a1")],
+    # Don't Sell
+    0x800160F0: [(0x80071680, "a1")],
+    # How many would you like?
+    0x80016230: [(0x80073f64, "a1")],
+    # Will you equip it?
+    0x80016268: [(0x80074460, "a1")],
+    # Still want to equip?
+    0x800162B8: [(0x80074b58, "a1")],
+    # I Want to buy
+    0x800162CC: [(0x80075104, "a1")],
+    # I want to sell
+    0x800162D8: [(0x80075134, "a1")],
+    # Never mind
+    0x800162E4: [(0x8007514c, "a1")],
+    # I thought we were friends
+    0x80016360: [(0x80075468, "a1")],
     # Various escape strings
     0x800DADD4: [(0x8003adc8, "a1"), (0x8003ae40, "a1"), (0x8003b5c4, "a1")],
     0x800DADE0: [(0x8003b5a8, "a1")],
