@@ -13,7 +13,7 @@ freeranges = [
     (0x82A8,  0x82F2),
     (0x8518,  0x854A),
     (0x8B58,  0x8D06),
-    (0x8D1C,  0x8EBA),  # 8fba?
+    (0x8D1C,  0x8E00),  # 8fba?
     (0x8FC4,  0x90BE)
 ]
 manualptr = {
@@ -58,6 +58,26 @@ manualptr = {
     0x800162E4: [(0x8007514c, "a1")],
     # I thought we were friends
     0x80016360: [(0x80075468, "a1")],
+    # it doesn't look like you have anything I want.
+    0x8001652C: [(0x80075794, "a1")],
+    # What would the King of Devilshh like today?
+    0x8001656C: [(0x800758dc, "a1")],
+    # Thankshh for your bushhinesshh.
+    0x80016A00: [(0x80075cf0, "a1")],
+    # Key Items
+    0x80017268: [(0x80081b74, "a1")],
+    # There's no magic you can use
+    0x800172BC: [(0x80083004, "a1")],
+    # New recollection.
+    0x80017A24: [(0x80093460, "a1"), (0x80094b28, "a1")],
+    # Return
+    0x80017A74: [(0x8009353c, "a1")],
+    # Would you still like to start the game?
+    0x80017BE0: [(0x800956f4, "a1")],
+    # The treasure chest is empty
+    0x80017E44: [(0x80099be4, "a1")],
+    # Oh, you're leaving? |Well come back any time. |Especially if you've got something interesting for me.
+    0x80016A20: [(0x80075e00, "a1")],
     # Various escape strings
     0x800DADD4: [(0x8003adc8, "a1"), (0x8003ae40, "a1"), (0x8003b5c4, "a1")],
     0x800DADE0: [(0x8003b5a8, "a1")],

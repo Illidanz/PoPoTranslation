@@ -63,6 +63,7 @@ def run():
                     else:
                         detectfunc = game.detectEncodedString if stringrange.type != 1 else game.detectVINString
                     extendedstrings = {}
+                    freeranges = [[stringrange.free, stringrange.end]]
                     fi.seek(stringrange.start)
                     while fi.tell() < stringrange.end:
                         pos = fi.tell()
@@ -112,10 +113,9 @@ def run():
                                         common.logDebug("String doesn't fit", x, "redirected to", extendedstrings[newsjis])
                                         fo.seek(-3, 1)
                                         fo.writeByte(0x1f)
+                                        common.logDebug("Redirect 0x1f address:", extendedstrings[newsjis] - fo.tell() + 1)
                                         fo.writeShort(extendedstrings[newsjis] - fo.tell() + 1)
                                     else:
-                                        # Redirect to free space
-                                        common.logDebug("String doesn't fit", x, "redirecting to", stringrange.free)
                                         # For non-anime lines, go back 3 characters
                                         if not anime:
                                             x -= 3
@@ -124,32 +124,50 @@ def run():
                                                 x -= 1
                                         stringfit = newsjis[:x]
                                         stringrest = newsjis[x:]
-                                        fo.seek(pos)
-                                        game.writeEncodedString(fo, stringfit)
-                                        fo.seek(-1, 1)
-                                        fo.writeByte(0x1f)
-                                        fo.writeShort(stringrange.free - fo.tell() + 1)
-                                        fo.seek(stringrange.free)
-                                        extendedstrings[newsjis] = fo.tell()
-                                        length, x = game.writeEncodedString(fo, stringrest, stringrange.end - stringrange.free)
-                                        if length < 0:
+                                        # Find a good freerange
+                                        goodrange = -1
+                                        for i in range(len(freeranges)):
+                                            if freeranges[i][1] - freeranges[i][0] > len(stringrest):
+                                                goodrange = i
+                                                break
+                                        if goodrange >= 0:
+                                            rangestart = freeranges[goodrange][0]
+                                            rangeend = freeranges[goodrange][1]
+                                            # Redirect to free space
+                                            common.logDebug("String doesn't fit", x, "redirecting to", rangestart)
+                                            fo.seek(pos)
+                                            game.writeEncodedString(fo, stringfit)
                                             fo.seek(-1, 1)
-                                            fo.writeByte(0x0)
-                                            common.logError("No room for string", newsjis, fo.tell())
-                                        else:
-                                            if anime:
-                                                # Jump to the end of the original line instead of terminating with 0
+                                            fo.writeByte(0x1f)
+                                            common.logDebug("Redirect 0x1f address:", rangestart - fo.tell() + 1)
+                                            fo.writeShort(rangestart - fo.tell() + 1)
+                                            fo.seek(rangestart)
+                                            extendedstrings[newsjis] = fo.tell()
+                                            length, x = game.writeEncodedString(fo, stringrest, rangeend - rangestart)
+                                            if length < 0:
                                                 fo.seek(-1, 1)
-                                                fo.writeByte(0x1f)
-                                                fo.writeShort(endpos - fo.tell() + 1)
-                                                stringrange.free += length + 3
+                                                fo.writeByte(0x0)
+                                                common.logError("No room for string", newsjis, stringrest, fo.tell())
                                             else:
-                                                stringrange.free += length + 1
+                                                if anime:
+                                                    # Jump to the end of the original line instead of terminating with 0
+                                                    fo.seek(-1, 1)
+                                                    fo.writeByte(0x1f)
+                                                    fo.writeShort(endpos - fo.tell() + 1)
+                                                    freeranges[goodrange][0] += length + 3
+                                                else:
+                                                    freeranges[goodrange][0] += length + 1
+                                        else:
+                                            common.logError("No free range for string", newsjis, stringrest, fo.tell())
                                 elif anime:
                                     # Jump to the end of the original line instead of terminating with 0
                                     fo.seek(-1, 1)
                                     fo.writeByte(0x1f)
                                     fo.writeShort(endpos - fo.tell() + 1)
+                                else:
+                                    # Add the rest to the free space
+                                    common.logDebug("Adding freerange", fo.tell(), endpos)
+                                    freeranges.insert(0, [fo.tell() + 1, endpos])
                             pos = fi.tell() - 1
                         fi.seek(pos + 1)
     dat.close()

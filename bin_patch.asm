@@ -265,7 +265,7 @@ FontVRamY        equ 48
   jr ra
   ;Add the new address to the source and return
   @@redirect:
-  lbu t5,0x2(a1)
+  lb t5,0x2(a1)
   lbu a0,0x1(a1)
   sll t5,t5,0x8
   or t5,t5,a0
