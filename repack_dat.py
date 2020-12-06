@@ -99,7 +99,9 @@ def run():
                                     # Split "ee" and "zz", 0x6565 and 0x7a7a are used as control codes
                                     newsjis = newsjis.replace("ee", "e<1E><00>e").replace("zz", "z<1E><00>z")
                                 else:
-                                    if "%" not in newsjis:
+                                    if newsjis == "!":
+                                        newsjis = " "
+                                    elif "%" not in newsjis:
                                         # Only wordwrap if there are no sprintf codes
                                         newsjis = common.wordwrap(newsjis, glyphs, 274, game.detectTextCode, 8)
                                 common.logDebug("Writing string at", fo.tell())
