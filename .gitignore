@@ -4,6 +4,7 @@ build
 data*
 *.log
 *.exe
+saves
 jpsxdec
 psximager
 notes.md
