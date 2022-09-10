@@ -1,4 +1,5 @@
 # PoPo Translation
+This repository was for a work in progress tool that wasn't finished. If you're looking for the English patch, click [here](http://www.romhacking.net/translations/6652/).
 ## Setup
 Create a "data" folder and copy the cue and bin files as "PoPoLoCrois Monogatari (Japan) (v1.1)" in it.  
 ## Run from binary
